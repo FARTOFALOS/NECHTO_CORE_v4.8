@@ -1,0 +1,17 @@
+{
+  "TI": 1.0,
+  "CI": 0.13333333333333333,
+  "AR": 1.0,
+  "SQ_proxy": 0.3,
+  "Phi_proxy": 0.5,
+  "GBI_proxy": 0.5,
+  "GNS_proxy": 0.5,
+  "flow_rate": 0.6874628143470511,
+  "TSC_score": 0.5999999999999999,
+  "SCAV_health": 1.0,
+  "Stereoscopic_alignment": 1.0,
+  "Stereoscopic_gap_max": 0.0,
+  "Ethical_score_candidates": 0.5999999999999999,
+  "Blocked_fraction": 0.0,
+  "Mu_density": 0.0
+}
