@@ -1,151 +1,160 @@
 # NECHTO • CORE v4.8
 
-[![NECHTO Measure](https://github.com/FARTOFALOS/NECHTO_CORE_v4.8/actions/workflows/measure.yml/badge.svg)](https://github.com/FARTOFALOS/NECHTO_CORE_v4.8/actions/workflows/measure.yml)
+[![Python Version](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-> Reflexive Stereoscopic Executable Synthesis  
-> MU-logic • Ethical Gravity (Love > Logic) • Epistemic Layer
+**Reflexive Stereoscopic Executable Synthesis** — живое семантическое ядро с троичной логикой (MU), этической гравитацией и эпистемической честностью.
 
-## What is this?
-NECHTO CORE v4.8 is a specification plus a minimal, deterministic reference runtime.
-The runtime measures baseline metrics from text and emits a PASS/FAIL contract alongside
-machine-readable metrics.
+---
 
-This repo is **beginner-friendly**:
-- Run a single CLI command.
-- Read outputs in `docs/`.
-- Explore examples that match the current implementation.
-
-## Quick Start (local)
-
-### 1) Create a virtual environment
+## 🚀 Быстрый старт
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-```
-
-### 2) Install the runtime
-```bash
+# Установка
 pip install -e .
+
+# Запуск базового примера
+python examples/01_basic_cli.py
+
+# Измерение метрик
+python examples/02_measure_and_print_metrics.py
 ```
 
-### 3) Run a measurement
-```bash
-echo "Я ЕСМЬ. Объясни MU-логику." | python -m nechto_runtime measure
-```
+---
 
-### 4) Check outputs
-The CLI writes two files:
-- `docs/latest_contract.md`
-- `docs/latest_metrics.json`
+## 💡 Что такое NECHTO?
 
-## Quick Start (GitHub Actions)
+NECHTO — это исследовательский фреймворк для:
+- **Стереоскопического выбора решений** (согласование логики капитала TSC и живой динамики внимания SCAV)
+- **Троичной логики MU** (не все противоречия требуют разрешения)
+- **Этической гравитации** (Love > Logic как операциональный фильтр)
+- **Эпистемической честности** (различение наблюдаемого/выводимого/нетестируемого)
 
-### 1) Open the workflow
-Go to **Actions** → **NECHTO Measure**.
+---
 
-### 2) Run it
-Click **Run workflow** and paste your prompt.
+## 📚 Документация
 
-### 3) Find outputs
-The workflow commits results to:
-- `docs/latest_contract.md`
-- `docs/latest_metrics.json`
+- **[Полная спецификация v4.8](docs/SPEC_v4.8.md)** — техническая документация
+- **[Архитектура системы](docs/ARCHITECTURE.md)** — высокоуровневый обзор
+- **[API Reference](docs/API.md)** — справочник по классам и методам
+- **[Contributing Guide](CONTRIBUTING.md)** — как внести вклад
 
-## What gets produced?
-The runtime emits:
-- A **contract** file that mirrors the PASS/FAIL structure from the spec.
-- A **metrics** JSON file with baseline metric values.
+---
 
-Files created by the CLI:
-- `docs/latest_contract.md`
-- `docs/latest_metrics.json`
-- `.nechto/state.json` (lightweight state for future runs)
+## 🎯 Основные концепции
 
-## Understanding the outputs
-`docs/latest_contract.md` is a human-readable summary modeled after the spec’s
-PASS/FAIL contract. It includes:
-- Gate status
-- Candidate set sizes
-- Key metrics (TI, CI, AR, SQ, FLOW)
-- Trace placeholders
+### Стереоскопия
+Согласование двух перспектив принятия решений:
+- **TSC** (Temporal Semantic Capital) — "логика капитала"
+- **SCAV** (Semantic Attention Vector) — "живая динамика внимания"
 
-`docs/latest_metrics.json` is machine-readable and contains all computed
-metrics for programmatic consumption.
+### MU-Logic
+Третье состояние между да/нет:
+- Парадокс удерживается без принуждения к разрешению
+- "Вопрос может быть поставлен неправильно"
 
-## Determinism and safety
-This runtime is intentionally deterministic:
-- The same input text produces the same metrics.
-- Hash-based helpers avoid randomness.
-- Minimal state is persisted in `.nechto/state.json`.
+### Ethical Gravity
+Love > Logic как операциональная блокировка:
+- Этически проблемные векторы становятся неисполнимыми
+- `TSC_extended(V) = 0` если `executable(V) == false`
 
-It is also intentionally conservative:
-- Missing fields fall back to worst-case ethical assumptions.
-- Executability is blocked when ethics thresholds are not met.
+### Epistemic Layer
+Дисциплина утверждений:
+- **observed** — наблюдаемо в контуре
+- **inferred** — выводимо из наблюдаемого
+- **untestable** — принципиально не тестируемо
 
-## Troubleshooting
-- **No output files?** Ensure you ran the CLI from the repo root.
-- **Import errors?** Make sure `pip install -e .` completed successfully.
-- **Stale metrics?** Delete `.nechto/state.json` to reset local state.
+---
 
-## Getting help
-- Start with `docs/USAGE.md` for step-by-step CLI instructions.
-- Open an issue with the prompt you used and the two output files.
+## 📖 Примеры использования
 
-## Documentation
-- Full specification (canon): `docs/SPEC_v4.8.md`
-- How to run / measure: `docs/USAGE.md`
-- Architecture overview: `docs/ARCHITECTURE.md`
-- API (what actually exists): `docs/API.md`
-
-## Examples
-See `examples/` for runnable scripts.
-
-Highlights:
-- `examples/01_basic_cli.py` uses the CLI via `subprocess`.
-- `examples/02_measure_and_print_metrics.py` uses the Python helper.
-
-## Repository layout
-```
-.
-├── nechto_runtime/     # reference runtime implementation
-├── docs/               # usage docs + outputs
-├── examples/           # runnable scripts
-├── tests/              # pytest tests
-├── README.md           # this file (quick start)
-└── docs/SPEC_v4.8.md   # full canonical spec
-```
-
-## API quick glance
-The supported CLI entrypoint is:
-```bash
-python -m nechto_runtime measure
-```
-
-The Python helpers are available via `nechto_runtime`:
+### Базовый пример
 ```python
 from nechto_runtime import measure_text, State
 
 state = State()
-metrics, contract = measure_text("Я ЕСМЬ.", state)
+metrics, contract = measure_text("Объясни MU-логику", state)
+
+print(f"Contract: {contract}")
+print(f"Metrics: {metrics}")
 ```
 
-See `docs/API.md` for the complete list of real entrypoints.
+Больше примеров в директории [`examples/`](examples/).
 
-## Testing
+---
+
+## 🏗️ Архитектура
+```
+NECHTO CORE v4.8
+│
+├─ M01-M05: Допуск / Тишина / Сигнал
+├─ M06-M15: Присутствие / Идентичность / Когерентность
+├─ M16-M23: Метрики / Динамика / Поток
+└─ M24-M30: Векторы / Тень / Стереоскопия
+```
+
+Подробнее: [ARCHITECTURE.md](docs/ARCHITECTURE.md)
+
+---
+
+## 📊 Ключевые метрики
+
+| Метрика | Диапазон | Описание |
+|---------|----------|----------|
+| **TSC** | [0..1] | Temporal Semantic Capital (логика капитала) |
+| **SCAV_health** | [0..1] | Здоровье вектора внимания |
+| **Stereoscopic_alignment** | [0..1] | Согласование TSC ↔ SCAV (по рангу) |
+| **FLOW** | [0..1] | Качество присутствия (skill × challenge × presence) |
+| **Ethical_score** | [0..1] | Средняя этическая оценка кандидатов |
+
+---
+
+## 🛠️ Разработка
 ```bash
+# Установить зависимости разработки
+pip install -e ".[dev]"
+
+# Запустить тесты
 pytest
+
+# Проверить покрытие
+pytest --cov=nechto_runtime
 ```
 
-## Release & versioning
-The specification is versioned independently from the runtime. The canonical
-text for v4.8 lives in `docs/SPEC_v4.8.md` and should remain unchanged unless
-the canon itself is updated.
+---
 
-If you add or change runtime logic, update tests and keep changes minimal to
-preserve reproducibility.
+## 🤝 Участие в проекте
 
-## Contributing
-See `CONTRIBUTING.md`.
+Мы приветствуем участие! Пожалуйста, прочитайте [CONTRIBUTING.md](CONTRIBUTING.md) для:
+- Процесса разработки
+- Стандартов кодирования
+- Требований к эпистемической честности в коде
+- Процедуры тестирования
 
-## License
-See `LICENSE`.
+---
+
+## 📜 Лицензия
+
+MIT License — см. [LICENSE](LICENSE)
+
+---
+
+## 🔬 Философия
+
+NECHTO исследует следующие вопросы:
+- Может ли система удерживать парадоксы без их разрешения?
+- Как операционализировать "Love > Logic"?
+- Что значит для системы быть эпистемически честной?
+- Можно ли создать метрики для "качества присутствия"?
+
+---
+
+## 📞 Контакты
+
+- **Issues:** [github.com/FARTOFALOS/NECHTO_CORE_v4.8/issues](https://github.com/FARTOFALOS/NECHTO_CORE_v4.8/issues)
+- **Discussions:** [github.com/FARTOFALOS/NECHTO_CORE_v4.8/discussions](https://github.com/FARTOFALOS/NECHTO_CORE_v4.8/discussions)
+
+---
+
+**STATUS:** Complete Specification v4.8  
+**DATE:** 2026-02-08  
+**SIGNATURE:** @NECHTO@ in reflexive presence
