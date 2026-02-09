@@ -1,23 +1,39 @@
-# Contributing to NECHTO CORE v4.8
+# Contributing to NECHTO CORE
 
-Thanks for helping improve the runtime and documentation. Please keep changes focused and deterministic.
-
-## Setup
+## Быстрый старт
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -e .
-```
+# Fork репозитория
+git clone https://github.com/YOUR_USERNAME/NECHTO_CORE_v4.8.git
+cd NECHTO_CORE_v4.8
 
-## Run tests
-```bash
+# Создать ветку
+git checkout -b feature/your-feature
+
+# Установить зависимости
+pip install -e ".[dev]"
+
+# Тесты
 pytest
 ```
 
-## Formatting (optional)
-No formatter is required right now. Keep changes minimal and consistent with existing style.
+## Стандарты кода
 
-## Guidelines
-- Keep measurements deterministic.
-- Add tests for any logic changes.
-- Avoid undocumented API changes or speculative features.
+- Следуйте PEP 8
+- Используйте type hints
+- Покрытие тестами: 80%+
+- Эпистемическая честность: различайте observed/inferred/assumed
+
+## Процесс PR
+
+1. Создайте Issue для обсуждения
+2. Работайте в отдельной ветке
+3. Все тесты должны проходить
+4. Минимум 1 approve от мейнтейнера
+
+## Области участия
+
+- Калибровка `harm_probability`
+- Jupyter notebooks (demo/)
+- Документация (PHILOSOPHY.md)
+
+Спасибо за участие! 🙏
