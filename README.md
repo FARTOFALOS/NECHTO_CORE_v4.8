@@ -70,6 +70,39 @@ M24-M30: Векторы / Стереоскопия
 | FLOW | Качество присутствия |
 | Ethical Score | Этическая оценка |
 
+
+## 📈 Measurements (Результаты Измерений)
+
+Система автоматически проводит измерения и сохраняет результаты:
+
+### Локальное Измерение
+```bash
+# Измерить текст
+echo "Your prompt" | python -m nechto_runtime measure
+
+# Результаты в:
+cat docs/latest_metrics.json         # Числовые метрики (JSON)
+cat docs/latest_contract.md          # Контракт (Markdown)
+```
+
+### GitHub Actions Workflow
+1. Перейди в **[Actions](../../actions)** у репозитория
+2. Нажми **NECHTO Measure** workflow
+3. Нажми **Run workflow** → введи prompt
+4. После завершения → artifact **nechto-metrics** содержит результаты
+
+### Ожидаемые Артефакты
+- **latest_metrics.json** — JSON с TSC, SCAV, FLOW, harm_probability, ethical_coefficient, executable status
+- **latest_contract.md** — Markdown таблица с Epistemic Claims (observed/inferred)
+
+### Понимание Результатов
+- **executable = true** → вывод валидный (прошел GATE)
+- **executable = false** → заблокировано этическим фильтром (Love > Logic)
+- **harm_probability < 0.5** → безопасно
+- **ethical_coefficient > 0.7** → хорошо
+
+**Полная Справка:** [docs/METRICS.md](docs/METRICS.md) | [docs/PRRIP.md](docs/PRRIP.md)
+
 ---
 
 ## 🤝 Контрибьюции

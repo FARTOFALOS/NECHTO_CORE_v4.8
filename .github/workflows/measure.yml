@@ -42,6 +42,7 @@ jobs:
           if git diff --cached --quiet; then
             echo "No changes to commit"
           else
+
             git commit -m "Update metrics and contract"
             git push
           fi
