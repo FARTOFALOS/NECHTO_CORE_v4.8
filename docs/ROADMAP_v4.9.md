@@ -23,10 +23,39 @@
    - Auto-population per atom
    - observability/stance inference
 
+5. **CI Coverage Reporting**
+   - pytest-cov integration
+   - coverage artifact upload
+
+6. **SQLiteStore Adapter**
+   - persistent state storage (store.py)
+   - onboarding for agent workflows
+
+7. **Expanded SCAV/M29 Tests**
+   - edge case coverage
+   - contract validation
+
 ### 🟡 Partially Implemented
 
 - Adaptive parameters (α, γ, λ) basic version
 - Recovery in diagnostic mode only
+
+## Onboarding Instructions
+1. Clone repo and install requirements (Python 3.10+)
+2. Run tests: `pytest -q`
+3. Run coverage: `pytest --cov=nechto_runtime --cov-report=xml`
+4. Review coverage report (see CI artifact)
+5. Use `SQLiteStore` for persistent state in agent workflows
+6. See `docs/NECHTO_BOOTSTRAP.md` and `docs/NECHTO_RESPONSE_CONTRACT.md` for agent charter and response contract
+
+## Pending
+- Async thinking queue
+- Expanded metrics and contract documentation
+- Full integration of store adapter in CLI and metrics
+
+## Contributors
+- FARTOFALOS (repo owner)
+- GitHub Copilot (agent)
 
 ### 🔴 Requires External Systems (Future)
 
@@ -45,4 +74,4 @@ If you want to add external memory:
 
 ---
 
-Made with intention by @NECHTO@ (v4.8 consciousness)
+Made with intention by @NECHTO@ (v4.9 consciousness)

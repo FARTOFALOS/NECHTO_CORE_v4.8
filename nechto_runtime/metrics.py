@@ -18,7 +18,7 @@ from typing import Dict, List, Tuple, Any
 from dataclasses import asdict
 from pathlib import Path
 
-from .types import SemanticAtom, Edge, Vector, State, EpistemicClaim
+from .types import SemanticAtom, Edge, Vector, State, EpistemicClaim, ParadoxMarker
 
 # ---------------------------------------------------------------------------
 # Helper functions
@@ -423,8 +423,8 @@ def measure_vector(vector: Vector, state: State, intent: str = "implement") -> T
     epistemic_claims = []
     
     for atom in vector.nodes:
-        # Определить observability
-        if atom.evidence.get("in_contour_observed"):
+        # Determine observability using normalized evidence keys
+        if atom.evidence.get("observed_in_contour"):
             observability = "observed"
             stance = "affirmed"
         elif atom.evidence.get("inferences"):
@@ -432,19 +432,39 @@ def measure_vector(vector: Vector, state: State, intent: str = "implement") -> T
             stance = "agnostic"
         else:
             observability = "untestable"
-            # Если paradox marker есть → MU
+            # If paradox marker exists → MU
             if atom.evidence.get("paradox_marker"):
                 stance = "MU"
             else:
                 stance = "agnostic"
-        
-        claim = {
+
+        claim_dict = {
             "topic": atom.label,
             "observability": observability,
             "stance": stance,
-            "reason": f"Status: {atom.status}, tags: {atom.tags}"
+            "reason": f"Status: {atom.status}, tags: {atom.tags}",
+            "linked_nodes": [atom.id],
         }
-        epistemic_claims.append(claim)
+        epistemic_claims.append(claim_dict)
+        # Also populate State.epistemic_claims as EpistemicClaim dataclass instances
+        if state is not None:
+            try:
+                ec = EpistemicClaim(
+                    topic=atom.label,
+                    scope="local",
+                    observability=observability,
+                    stance=stance,
+                    reason=claim_dict["reason"],
+                    linked_nodes=[atom.id],
+                )
+                if not hasattr(state, "epistemic_claims") or state.epistemic_claims is None:
+                    state.epistemic_claims = []
+                state.epistemic_claims.append(ec)
+            except Exception:
+                # Fallback: append raw dict if dataclass construction fails
+                if not hasattr(state, "epistemic_claims") or state.epistemic_claims is None:
+                    state.epistemic_claims = []
+                state.epistemic_claims.append(claim_dict)
     
     contract: Dict[str, Any] = {
         "header": "@i@*осознан_в*@NECHTO@",
@@ -476,7 +496,9 @@ def measure_vector(vector: Vector, state: State, intent: str = "implement") -> T
             "assumptions": [],
             "chosen_vector": vector.id,
         },
-        "EPISTEMIC_CLAIMS": epistemic_claims[:5],  # top 5
+        # Provide full epistemic claims in contract (can be large) and keep a top5 preview
+        "EPISTEMIC_CLAIMS": epistemic_claims,
+        "EPISTEMIC_CLAIMS_PREVIEW": epistemic_claims[:5],
     }
     return metrics, contract
 
@@ -501,15 +523,40 @@ def detect_sustained_contradiction(state: State, threshold_cycles: int = 3) -> b
 def assign_mu_status(vector: Vector, state: State) -> Vector:
     """M29 - Assign MU status to paradox nodes"""
     if detect_sustained_contradiction(state):
+        # Determine paradox type
+        recent_align = list(state.alignment_history)[-3:]
+        recent_gap = list(state.gap_max_history)[-3:]
+        sustained_misalignment = all(a < 0.3 for a in recent_align)
+        sustained_gap = all(g > 1.5 for g in recent_gap)
+        paradox_type = "both" if sustained_misalignment and sustained_gap else ("alignment" if sustained_misalignment else "gap")
+
+        pm = ParadoxMarker(paradox_type=paradox_type, sustained_cycles=3, tsc_direction="conflict", scav_direction="conflict")
+        # Annotate atoms and add epistemic claims
         for atom in vector.nodes:
             if atom.status == "FLOATING" and atom.identity_alignment < 0:
                 atom.status = "MU"
-                # Сохранить информацию о парадоксе
                 atom.evidence["paradox_marker"] = {
+                    "paradox_type": pm.paradox_type,
                     "detected_at_cycle": state.current_cycle,
-                    "sustained_cycles": 3,
-                    "tsc_vs_scav": "conflict"
+                    "sustained_cycles": pm.sustained_cycles,
                 }
+                # Add an epistemic claim describing the paradox
+                claim = EpistemicClaim(
+                    topic=f"paradox:{atom.label}",
+                    scope="local",
+                    observability="inferred",
+                    stance="MU",
+                    reason=f"Detected sustained {pm.paradox_type} contradiction",
+                    linked_nodes=[atom.id],
+                )
+                # Ensure state.epistemic_claims is a list
+                if not hasattr(state, "epistemic_claims") or state.epistemic_claims is None:
+                    state.epistemic_claims = []
+                state.epistemic_claims.append(claim)
+        # Also record paradox marker as a top-level trace entry
+        if not hasattr(state, "paradox_markers"):
+            state.paradox_markers = []
+        state.paradox_markers.append(pm)
     return vector
 
 

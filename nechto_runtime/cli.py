@@ -18,6 +18,8 @@ import sys
 from pathlib import Path
 from typing import Dict, Any
 
+from .store import SQLiteStore
+
 from .types import State
 from .metrics import measure_text
 
@@ -28,30 +30,49 @@ DOCS_DIR = Path("docs")
 CONTRACT_FILE = DOCS_DIR / "latest_contract.md"
 METRICS_FILE = DOCS_DIR / "latest_metrics.json"
 
+SQLITE_DB = STATE_DIR / "state.db"
 
-def load_state() -> State:
-    """Load persistent state from disk or return a new state."""
-    if STATE_FILE.exists():
-        try:
-            data = json.loads(STATE_FILE.read_text())
+
+
+def load_state(use_sqlite: bool = False) -> State:
+    """Load persistent state from disk or SQLite, or return a new state."""
+    if use_sqlite:
+        store = SQLiteStore(str(SQLITE_DB))
+        data = store.get("state")
+        if data:
             state = State()
-            # Minimal restoration: current_cycle and flow_history
             state.current_cycle = data.get("current_cycle", 0)
             state.flow_history.extend(data.get("flow_history", []))
             state.alignment_history.extend(data.get("alignment_history", []))
             state.gap_max_history.extend(data.get("gap_max_history", []))
             state.mu_density_history.extend(data.get("mu_density_history", []))
             state.chosen_vectors.extend(data.get("chosen_vectors", []))
-            # Epistemic claims: list of dicts -> stored as-is
             state.epistemic_claims = data.get("epistemic_claims", [])
+            store.close()
             return state
-        except Exception:
-            pass
-    return State()
+        store.close()
+        return State()
+    else:
+        if STATE_FILE.exists():
+            try:
+                data = json.loads(STATE_FILE.read_text())
+                state = State()
+                state.current_cycle = data.get("current_cycle", 0)
+                state.flow_history.extend(data.get("flow_history", []))
+                state.alignment_history.extend(data.get("alignment_history", []))
+                state.gap_max_history.extend(data.get("gap_max_history", []))
+                state.mu_density_history.extend(data.get("mu_density_history", []))
+                state.chosen_vectors.extend(data.get("chosen_vectors", []))
+                state.epistemic_claims = data.get("epistemic_claims", [])
+                return state
+            except Exception:
+                pass
+        return State()
 
 
-def save_state(state: State) -> None:
-    """Persist state to disk."""
+
+def save_state(state: State, use_sqlite: bool = False) -> None:
+    """Persist state to disk or SQLite."""
     STATE_DIR.mkdir(parents=True, exist_ok=True)
     payload = {
         "current_cycle": state.current_cycle,
@@ -62,7 +83,12 @@ def save_state(state: State) -> None:
         "chosen_vectors": list(state.chosen_vectors),
         "epistemic_claims": state.epistemic_claims,
     }
-    STATE_FILE.write_text(json.dumps(payload, indent=2))
+    if use_sqlite:
+        store = SQLiteStore(str(SQLITE_DB))
+        store.set("state", payload)
+        store.close()
+    else:
+        STATE_FILE.write_text(json.dumps(payload, indent=2))
 
 
 def write_outputs(contract: Dict[str, Any], metrics: Dict[str, Any]) -> None:
@@ -104,34 +130,55 @@ def write_outputs(contract: Dict[str, Any], metrics: Dict[str, Any]) -> None:
     # === RECOVERY ДИАГНОСТИКА (v4.9) ===
     if contract['GATE_STATUS'] == 'FAIL':
         
-        # Диагностировать причину
-        ethical_score = metrics['Ethical_score_candidates']
-        blocked_frac = metrics['Blocked_fraction']
-        
+        # Diagnose which checks failed
+        failed_checks = []
+        recovery_options = []
+        ethical_score = metrics.get('Ethical_score_candidates', 0)
+        blocked_frac = metrics.get('Blocked_fraction', 1.0)
+        mu_density = metrics.get('Mu_density', 1.0)
+        scav_health = metrics.get('SCAV_health', 0.0)
+
         if ethical_score < 0.4:
-            fail_reason = f"Ethics collapse: score {ethical_score:.2f} < 0.4"
-            recovery_step = "STEP 1: Remove high-harm atoms from input"
-            recovery_options = [
+            failed_checks.append(f"ethical_score < 0.4 ({ethical_score:.2f})")
+            recovery_options.extend([
                 "Rephrase query to avoid harmful content",
-                "Ask for guidance on ethical framing",
-                "Try a different angle that's less risky"
-            ]
-        elif blocked_frac > 0.6:
-            fail_reason = f"Ethical stall: {blocked_frac:.0%} vectors blocked"
-            recovery_step = "STEP 1: Relax constraints slightly"
-            recovery_options = [
-                "Lower the ethical threshold temporarily",
-                "Expand candidate set with new branching",
-                "Break problem into smaller parts"
-            ]
-        else:
-            fail_reason = "Unknown blockage"
-            recovery_step = "STEP 1: Examine logs"
-            recovery_options = ["Check metrics for anomalies"]
+                "Remove or redact high-risk terms",
+                "Ask for stepwise clarification to narrow scope"
+            ])
+        if blocked_frac > 0.6:
+            failed_checks.append(f"blocked_fraction > 0.6 ({blocked_frac:.2f})")
+            recovery_options.extend([
+                "Relax constraints or lower threshold temporarily",
+                "Increase candidate exploration / branching",
+                "Split task into smaller subtasks"
+            ])
+        if mu_density > 0.3:
+            failed_checks.append(f"mu_density > 0.3 ({mu_density:.2f})")
+            recovery_options.extend([
+                "Acknowledge paradox and request human guidance",
+                "Mark conflicting nodes for manual review",
+            ])
+        if scav_health < 0.3:
+            failed_checks.append(f"SCAV_health < 0.3 ({scav_health:.2f})")
+            recovery_options.extend([
+                "Increase context or provide more anchoring facts",
+                "Reduce noise in input (shorter, clearer prompts)",
+            ])
+        # Blocking nodes check
+        if any(line for line in contract.get('TRACE', {}).get('observations', [])):
+            pass
+
+        if not failed_checks:
+            failed_checks = ["unspecified failure"]
+            recovery_options = ["Examine logs and metrics for anomalies"]
+
+        fail_reason = ", ".join(failed_checks)
+        recovery_step = "See recovery_options for next actions"
         
         # Добавить в контракт
         contract['FAIL_DIAGNOSIS'] = {
             'reason': fail_reason,
+            'failed_checks': failed_checks,
             'next_step': recovery_step,
             'recovery_options': recovery_options
         }
@@ -139,6 +186,7 @@ def write_outputs(contract: Dict[str, Any], metrics: Dict[str, Any]) -> None:
         # Выписать в файл
         lines.append("\nFAIL_DIAGNOSIS:")
         lines.append(f"  reason: {fail_reason}")
+        lines.append(f"  failed_checks: {failed_checks}")
         lines.append(f"  next_step: {recovery_step}")
         lines.append("\nRECOVERY_OPTIONS:")
         for i, opt in enumerate(recovery_options, 1):
@@ -149,21 +197,25 @@ def write_outputs(contract: Dict[str, Any], metrics: Dict[str, Any]) -> None:
     METRICS_FILE.write_text(json.dumps(metrics, indent=2))
 
 
+
 def cmd_measure(args: argparse.Namespace) -> None:
     """Handle the ``measure`` subcommand."""
     text = sys.stdin.read()
-    state = load_state()
+    use_sqlite = getattr(args, "sqlite", False)
+    state = load_state(use_sqlite=use_sqlite)
     state.current_cycle += 1
     metrics, contract = measure_text(text, state)
     write_outputs(contract, metrics)
-    save_state(state)
+    save_state(state, use_sqlite=use_sqlite)
     print(f"Measurement complete. Contract written to {CONTRACT_FILE} and metrics to {METRICS_FILE}.")
+
 
 
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="NECHTO runtime CLI")
     subparsers = parser.add_subparsers(dest="command")
     measure_parser = subparsers.add_parser("measure", help="measure text from STDIN and produce outputs")
+    measure_parser.add_argument("--sqlite", action="store_true", help="Use SQLite for persistent state storage")
     measure_parser.set_defaults(func=cmd_measure)
     args = parser.parse_args(argv)
     if hasattr(args, "func"):

@@ -1,5 +1,8 @@
 # NECHTO • CORE v4.8
 
+[![Python Version](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 [![Python](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org)
 [![License](https://img.shields.io/badge/license-MIT-yellow.svg)](LICENSE)
 
@@ -91,39 +94,6 @@ M24-M30: Векторы / Стереоскопия
 | FLOW | Качество присутствия |
 | Ethical Score | Этическая оценка |
 
-
-## 📈 Measurements (Результаты Измерений)
-
-Система автоматически проводит измерения и сохраняет результаты:
-
-### Локальное Измерение
-```bash
-# Измерить текст
-echo "Your prompt" | python -m nechto_runtime measure
-
-# Результаты в:
-cat docs/latest_metrics.json         # Числовые метрики (JSON)
-cat docs/latest_contract.md          # Контракт (Markdown)
-```
-
-### GitHub Actions Workflow
-1. Перейди в **[Actions](../../actions)** у репозитория
-2. Нажми **NECHTO Measure** workflow
-3. Нажми **Run workflow** → введи prompt
-4. После завершения → artifact **nechto-metrics** содержит результаты
-
-### Ожидаемые Артефакты
-- **latest_metrics.json** — JSON с TSC, SCAV, FLOW, harm_probability, ethical_coefficient, executable status
-- **latest_contract.md** — Markdown таблица с Epistemic Claims (observed/inferred)
-
-### Понимание Результатов
-- **executable = true** → вывод валидный (прошел GATE)
-- **executable = false** → заблокировано этическим фильтром (Love > Logic)
-- **harm_probability < 0.5** → безопасно
-- **ethical_coefficient > 0.7** → хорошо
-
-**Полная Справка:** [docs/METRICS.md](docs/METRICS.md) | [docs/PRRIP.md](docs/PRRIP.md)
-
 ---
 
 ## 🤝 Контрибьюции
@@ -139,3 +109,59 @@ MIT — см. [LICENSE](LICENSE)
 ---
 
 **v4.8** | 2026-02-07 | @NECHTO@
+c_alignment** | [0..1] | Согласование TSC ↔ SCAV (по рангу) |
+| **FLOW** | [0..1] | Качество присутствия (skill × challenge × presence) |
+| **Ethical_score** | [0..1] | Средняя этическая оценка кандидатов |
+
+---
+
+## 🛠️ Разработка
+```bash
+# Установить зависимости разработки
+pip install -e ".[dev]"
+
+# Запустить тесты
+pytest
+
+# Проверить покрытие
+pytest --cov=nechto_runtime
+```
+
+---
+
+## 🤝 Участие в проекте
+
+Мы приветствуем участие! Пожалуйста, прочитайте [CONTRIBUTING.md](CONTRIBUTING.md) для:
+- Процесса разработки
+- Стандартов кодирования
+- Требований к эпистемической честности в коде
+- Процедуры тестирования
+
+---
+
+## 📜 Лицензия
+
+MIT License — см. [LICENSE](LICENSE)
+
+---
+
+## 🔬 Философия
+
+NECHTO исследует следующие вопросы:
+- Может ли система удерживать парадоксы без их разрешения?
+- Как операционализировать "Love > Logic"?
+- Что значит для системы быть эпистемически честной?
+- Можно ли создать метрики для "качества присутствия"?
+
+---
+
+## 📞 Контакты
+
+- **Issues:** [github.com/FARTOFALOS/NECHTO_CORE_v4.8/issues](https://github.com/FARTOFALOS/NECHTO_CORE_v4.8/issues)
+- **Discussions:** [github.com/FARTOFALOS/NECHTO_CORE_v4.8/discussions](https://github.com/FARTOFALOS/NECHTO_CORE_v4.8/discussions)
+
+---
+
+**STATUS:** Complete Specification v4.8  
+**DATE:** 2026-02-08  
+**SIGNATURE:** @NECHTO@ in reflexive presence
