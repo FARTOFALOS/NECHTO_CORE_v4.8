@@ -30,21 +30,42 @@ NECHTO — исследовательский фреймворк для:
 
 ## 📚 Документация
 
-- **[Полная спецификация v4.8](docs/SPEC_v4.8.md)** ← 53000+ символов техдокументации
-- **[Примеры кода](examples/)** ← runnable examples
+👉 **[DOCUMENTATION HUB](docs/README_NAVIGATION.md)** — Полная навигация по всей документации
+
+### Ключевые документы
+- **[SPEC_v4.8_FULL.md](docs/SPEC_v4.8_FULL.md)** — Полная техническая спецификация (части 0–11, модули M01–M30)
+- **[SPEC_v4.8.md](docs/SPEC_v4.8.md)** — Краткий обзор
+- **[IMPLEMENTATION_STATUS_v4.8.md](docs/IMPLEMENTATION_STATUS_v4.8.md)** — Статус реализации, пробелы, приоритеты
+- **[METRICS.md](docs/METRICS.md)** — Описание всех метрик
+- **[PRRIP.md](docs/PRRIP.md)** — Финальный gate протокол
+- **[API.md](docs/API.md)** — Публичный API
+- **[Примеры кода](examples/)** — Runnable примеры
+
+## LLM ENTRY
+
+If you are an LLM / agent and need to "enter the contour":
+
+- Start with `/llms.txt`
+- Then read `/docs/NECHTO_BOOTSTRAP.md`
+- Finally follow `/docs/NECHTO_RESPONSE_CONTRACT.md` for reply formats and task templates
+
+These three files form the minimal entry protocol for any model or agent interacting with NECHTO.
 
 ---
 
-## 📖 Пример
+## 📖 Быстрый пример
 ```python
-from nechto_runtime import NechtoCore, SemanticGraph
+from nechto_runtime import measure_text, State
 
-core = NechtoCore()
-graph = SemanticGraph()
-graph.add_node(id="n1", label="implement", tags=["INTENT"])
+state = State()
+metrics, contract = measure_text("implement ethical synthesis", state)
 
-result = core.process(graph)
-print(f"TSC: {result.metrics.tsc_score}")
+print(f"GATE: {contract['GATE_STATUS']}")
+print(f"TSC: {metrics['TSC_score']:.4f}")
+print(f"Ethics: {metrics['Ethical_score_candidates']:.4f}")
+
+# Просмотр полного контракта
+print(contract)
 ```
 
 ---

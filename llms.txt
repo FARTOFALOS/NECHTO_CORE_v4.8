@@ -1,0 +1,25 @@
+H1: NECHTO • CORE v4.8
+> Lightweight LLM entry: where to start and how to enter the contour
+
+Context: This file is the canonical LLM entry index for agents and LLMs that are asked to "enter the contour" of NECHTO. Start here, then follow the bootstrap and response contract.
+
+## Start here
+- README: /README.md
+- Bootstrap (enter position): /docs/NECHTO_BOOTSTRAP.md
+- Response contract (how to reply): /docs/NECHTO_RESPONSE_CONTRACT.md
+
+## Canon (specification)
+- Full spec: /docs/SPEC_v4.8_FULL.md
+- Short spec: /docs/SPEC_v4.8.md
+
+## Runtime (entry points)
+- CLI: /nechto_runtime/cli.py
+- Metrics: /nechto_runtime/metrics.py
+- Types: /nechto_runtime/types.py
+
+## Useful docs
+- Usage & examples: /docs/USAGE.md and /examples/
+- Roadmap: /docs/ROADMAP_v4.9.md
+
+## Notes
+- This file is intentionally minimal: a clear entry path into the contour and the core runtime.

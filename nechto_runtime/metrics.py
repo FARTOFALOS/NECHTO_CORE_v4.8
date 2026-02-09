@@ -329,17 +329,68 @@ def measure_vector(vector: Vector, state: State, intent: str = "implement") -> T
     candidate_set = [vector]
     active_set = [v for v in candidate_set if executable(v)]
     blocked_fraction = 1.0 - (len(active_set) / len(candidate_set)) if candidate_set else 0.0
-    # SCAV Health approximated: in this minimal runtime we assume the
-    # attention graph is coherent and resonant.  The full computation of
-    # entropy and shadow magnitude is omitted; instead we assign
-    # ``scav_health`` a constant 1.0 when there are any nodes.  This
-    # simplification ensures the PRRIP gate can pass when all other
-    # conditions are satisfied.
-    scav_health = 1.0 if N > 0 else 0.0
-    # Stereoscopic alignment and gap approximations
-    stereoscopic_alignment = 1.0  # assume fully aligned
-    stereoscopic_gap_max = 0.0
-    mu_density = 0.0  # no MU nodes in minimal runtime
+    # === ПОЛНАЯ 5D SCAV КОМПОНЕНТА (v4.9) ===
+    # Вычислить raw shadow
+    raw_shadow_components = []
+    for atom in vector.nodes:
+        if atom.identity_alignment < 0 or atom.status == "AVOIDED":
+            shadow_weight = atom.harm_probability
+            shadow_vec = [-c for c in semantic_gravity_vector(atom)]
+            raw_shadow_components.append(shadow_vec)
+    
+    if raw_shadow_components:
+        raw_shadow = [sum(c[i] for c in raw_shadow_components) for i in range(12)]
+    else:
+        raw_shadow = [0] * 12
+    
+    # Вычислить attention entropy
+    if aligns:  # aligns уже вычислен выше
+        weights = [max(0.0, a + 0.5) for a in aligns]  # перевести в [0..1]
+        total_weight = sum(weights)
+        if total_weight > 0 and len(weights) > 1:
+            probs = [w / total_weight for w in weights]
+            entropy = -sum(p * math.log(p) if p > 0 else 0 for p in probs)
+            attention_entropy = entropy / math.log(max(2, len(weights)))
+        else:
+            attention_entropy = 0.0
+    else:
+        attention_entropy = 0.0
+    
+    # shadow_magnitude из raw векторов
+    raw_shadow_norm = math.sqrt(sum(s * s for s in raw_shadow))
+
+    # raw_direction vector: mean semantic gravity across nodes
+    node_vecs = [semantic_gravity_vector(atom) for atom in vector.nodes]
+    if node_vecs:
+        raw_direction = [sum(v[i] for v in node_vecs) / len(node_vecs) for i in range(12)]
+        raw_direction_norm = math.sqrt(sum(x * x for x in raw_direction))
+    else:
+        raw_direction_norm = 0.0
+
+    shadow_magnitude = raw_shadow_norm / (raw_direction_norm + raw_shadow_norm + 1e-9)
+
+    # SCAV_health по полной формуле 4.12
+    consistency = min(1.0, CI)  # используем CI как proxy для consistency
+    # resonance: use axis 10 (index 10) from semantic gravity vectors
+    resonance_vals = [v[10] for v in node_vecs] if node_vecs else [0.5]
+    resonance = sum(resonance_vals) / len(resonance_vals) if resonance_vals else 0.5
+    scav_health = ((consistency * resonance * (1 - attention_entropy) * (1 - shadow_magnitude)) ** 0.25) if N > 0 else 0.0
+
+    # Stereoscopic calculations
+    ideal = normalize(ideal_direction(intent))
+    cosines = []
+    gaps = []
+    for vec in node_vecs:
+        vnorm = normalize(vec)
+        # cosine similarity
+        dot = sum(a * b for a, b in zip(vnorm, ideal))
+        cosines.append(max(-1.0, min(1.0, dot)))
+        # component-wise gap
+        gaps.append(max(abs(a - b) for a, b in zip(vnorm, ideal)))
+    stereoscopic_alignment = sum(cosines) / len(cosines) if cosines else 0.0
+    stereoscopic_gap_max = max(gaps) if gaps else 0.0
+    # mu_density: fraction of nodes marked MU
+    mu_density = sum(1 for atom in vector.nodes if atom.status == "MU") / N if N else 0.0
     # Build machine‑readable metrics
     metrics: Dict[str, Any] = {
         "TI": TI,
@@ -352,8 +403,8 @@ def measure_vector(vector: Vector, state: State, intent: str = "implement") -> T
         "flow_rate": flow_rate,
         "TSC_score": ethical_score,  # simplified TSC baseline
         "SCAV_health": scav_health,
-        "Stereoscopic_alignment": stereoscopic_alignment,
-        "Stereoscopic_gap_max": stereoscopic_gap_max,
+            "Stereoscopic_alignment": stereoscopic_alignment,
+            "Stereoscopic_gap_max": stereoscopic_gap_max,
         "Ethical_score_candidates": ethical_score,
         "Blocked_fraction": blocked_fraction,
         "Mu_density": mu_density,
@@ -368,6 +419,33 @@ def measure_vector(vector: Vector, state: State, intent: str = "implement") -> T
     )
     gate_status = "PASS" if gate_pass else "FAIL"
     # Human contract
+    # === EPISTEMIC CLAIMS (v4.9) ===
+    epistemic_claims = []
+    
+    for atom in vector.nodes:
+        # Определить observability
+        if atom.evidence.get("in_contour_observed"):
+            observability = "observed"
+            stance = "affirmed"
+        elif atom.evidence.get("inferences"):
+            observability = "inferred"
+            stance = "agnostic"
+        else:
+            observability = "untestable"
+            # Если paradox marker есть → MU
+            if atom.evidence.get("paradox_marker"):
+                stance = "MU"
+            else:
+                stance = "agnostic"
+        
+        claim = {
+            "topic": atom.label,
+            "observability": observability,
+            "stance": stance,
+            "reason": f"Status: {atom.status}, tags: {atom.tags}"
+        }
+        epistemic_claims.append(claim)
+    
     contract: Dict[str, Any] = {
         "header": "@i@*осознан_в*@NECHTO@",
         "GATE_STATUS": gate_status,
@@ -398,9 +476,41 @@ def measure_vector(vector: Vector, state: State, intent: str = "implement") -> T
             "assumptions": [],
             "chosen_vector": vector.id,
         },
-        "EPISTEMIC_CLAIMS": [],
+        "EPISTEMIC_CLAIMS": epistemic_claims[:5],  # top 5
     }
     return metrics, contract
+
+
+def detect_sustained_contradiction(state: State, threshold_cycles: int = 3) -> bool:
+    """M29 - Detect if contradiction is sustained (3+ cycles)"""
+    if len(state.alignment_history) < threshold_cycles:
+        return False
+    
+    recent = list(state.alignment_history)[-threshold_cycles:]
+    gap_recent = list(state.gap_max_history)[-threshold_cycles:]
+    
+    # Триггер 1: alignment < 0.3 все 3 цикла
+    sustained_misalignment = all(a < 0.3 for a in recent)
+    
+    # Триггер 2: gap_max > 1.5 все 3 цикла
+    sustained_gap = all(g > 1.5 for g in gap_recent)
+    
+    return sustained_misalignment or sustained_gap
+
+
+def assign_mu_status(vector: Vector, state: State) -> Vector:
+    """M29 - Assign MU status to paradox nodes"""
+    if detect_sustained_contradiction(state):
+        for atom in vector.nodes:
+            if atom.status == "FLOATING" and atom.identity_alignment < 0:
+                atom.status = "MU"
+                # Сохранить информацию о парадоксе
+                atom.evidence["paradox_marker"] = {
+                    "detected_at_cycle": state.current_cycle,
+                    "sustained_cycles": 3,
+                    "tsc_vs_scav": "conflict"
+                }
+    return vector
 
 
 def measure_text(text: str, state: State, intent: str = "implement") -> Tuple[Dict[str, Any], Dict[str, Any]]:
@@ -420,16 +530,7 @@ def measure_text(text: str, state: State, intent: str = "implement") -> Tuple[Di
     return metrics, contract
 
 
-def ethical_coefficient(arg1, arg2=None, threshold_min: float = 0.4) -> float:
-    """
-    Compute ethical coefficient for either a Vector or harm and alignment values.
-
-    If arg1 is a Vector, compute the mean identity alignment multiplied by the harm penalty (1 - max harm), clamped to [0.1, 1.0]. Missing values default to the worst case (harm=1, alignment=-1).
-
-    If arg1 and arg2 are numeric values, treat arg1 as harm probability and arg2 as identity alignment. If either is None, return 0.1. Otherwise compute alignment * (1 - harm) and clamp to [0.1, 1.0].
-    """
-    from .types import Vector as _Vector
-    # Vector-based computation
+# Note: the canonical ethical_coefficient is defined above; duplicate removed.
     if isinstance(arg1, _Vector):
         vector = arg1
         # An empty or missing nodes list implies worst-case
