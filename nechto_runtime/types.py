@@ -39,11 +39,13 @@ class SemanticAtom:
     harm_probability: float = 0.0
     tags: List[str] = field(default_factory=list)
     avoided_marker: Optional[str] = None
-    evidence: Dict[str, List[str]] = field(
+    evidence: Dict[str, Any] = field(
         default_factory=lambda: {
-            "in_contour_observed": [],
+            "observed_in_contour": False,
             "inferences": [],
             "assumptions": [],
+            "paradox_marker": None,
+            "scores": {},
         }
     )
 
@@ -126,3 +128,14 @@ class EpistemicClaim:
     stance: str
     reason: str
     linked_nodes: List[str] = field(default_factory=list)
+
+
+@dataclass
+class ParadoxMarker:
+    """Маркер для MU узлов (часть M29)"""
+    paradox_type: str  # "rank_mismatch" | "amplitude_gap" | "both"
+    sustained_cycles: int = 0
+    tsc_direction: str = "→"
+    scav_direction: str = "←"
+    resolution_attempts: int = 0
+    synthesis_vector_id: Optional[str] = None

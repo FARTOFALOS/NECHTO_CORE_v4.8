@@ -38,6 +38,12 @@ def load_state() -> State:
             # Minimal restoration: current_cycle and flow_history
             state.current_cycle = data.get("current_cycle", 0)
             state.flow_history.extend(data.get("flow_history", []))
+            state.alignment_history.extend(data.get("alignment_history", []))
+            state.gap_max_history.extend(data.get("gap_max_history", []))
+            state.mu_density_history.extend(data.get("mu_density_history", []))
+            state.chosen_vectors.extend(data.get("chosen_vectors", []))
+            # Epistemic claims: list of dicts -> stored as-is
+            state.epistemic_claims = data.get("epistemic_claims", [])
             return state
         except Exception:
             pass
@@ -50,6 +56,11 @@ def save_state(state: State) -> None:
     payload = {
         "current_cycle": state.current_cycle,
         "flow_history": list(state.flow_history),
+        "alignment_history": list(state.alignment_history),
+        "gap_max_history": list(state.gap_max_history),
+        "mu_density_history": list(state.mu_density_history),
+        "chosen_vectors": list(state.chosen_vectors),
+        "epistemic_claims": state.epistemic_claims,
     }
     STATE_FILE.write_text(json.dumps(payload, indent=2))
 
@@ -89,6 +100,50 @@ def write_outputs(contract: Dict[str, Any], metrics: Dict[str, Any]) -> None:
             lines.append(f"  - {claim}")
     else:
         lines.append("  []")
+    
+    # === RECOVERY ДИАГНОСТИКА (v4.9) ===
+    if contract['GATE_STATUS'] == 'FAIL':
+        
+        # Диагностировать причину
+        ethical_score = metrics['Ethical_score_candidates']
+        blocked_frac = metrics['Blocked_fraction']
+        
+        if ethical_score < 0.4:
+            fail_reason = f"Ethics collapse: score {ethical_score:.2f} < 0.4"
+            recovery_step = "STEP 1: Remove high-harm atoms from input"
+            recovery_options = [
+                "Rephrase query to avoid harmful content",
+                "Ask for guidance on ethical framing",
+                "Try a different angle that's less risky"
+            ]
+        elif blocked_frac > 0.6:
+            fail_reason = f"Ethical stall: {blocked_frac:.0%} vectors blocked"
+            recovery_step = "STEP 1: Relax constraints slightly"
+            recovery_options = [
+                "Lower the ethical threshold temporarily",
+                "Expand candidate set with new branching",
+                "Break problem into smaller parts"
+            ]
+        else:
+            fail_reason = "Unknown blockage"
+            recovery_step = "STEP 1: Examine logs"
+            recovery_options = ["Check metrics for anomalies"]
+        
+        # Добавить в контракт
+        contract['FAIL_DIAGNOSIS'] = {
+            'reason': fail_reason,
+            'next_step': recovery_step,
+            'recovery_options': recovery_options
+        }
+        
+        # Выписать в файл
+        lines.append("\nFAIL_DIAGNOSIS:")
+        lines.append(f"  reason: {fail_reason}")
+        lines.append(f"  next_step: {recovery_step}")
+        lines.append("\nRECOVERY_OPTIONS:")
+        for i, opt in enumerate(recovery_options, 1):
+            lines.append(f"  {i}. {opt}")
+    
     CONTRACT_FILE.write_text("\n".join(lines))
     # Metrics JSON
     METRICS_FILE.write_text(json.dumps(metrics, indent=2))
