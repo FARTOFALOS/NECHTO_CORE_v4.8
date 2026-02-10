@@ -19,6 +19,8 @@ from .types import (
     EpistemicClaim,
     ParadoxMarker,
     AdaptiveParameters,
+    ThinkingTask,
+    AsyncThinkingQueue,
 )
 from .graph import parse_text_to_graph, build_vector, parse_graph
 from .seed import canon_seed_atoms
@@ -55,6 +57,8 @@ __all__ = [
     "EpistemicClaim",
     "ParadoxMarker",
     "AdaptiveParameters",
+    "ThinkingTask",
+    "AsyncThinkingQueue",
     # Graph
     "parse_text_to_graph",
     "build_vector",

@@ -8,6 +8,44 @@ checks, adaptive parameter learning, temporal recursion (FP_recursive),
 multi-vector candidate generation, full SCAV 5D computation, M29
 paradox detection/assignment, and a top-level ``measure_text`` function
 which drives the entire measurement process.
+
+## Quick Start
+
+>>> from nechto_runtime.types import State
+>>> from nechto_runtime.metrics import measure_text
+>>> text = "Express intention with clarity"
+>>> state = State()
+>>> metrics, contract = measure_text(text, state, intent="implement")
+>>> print(f"Gate: {contract['GATE_STATUS']}")
+>>> print(f"SCAV health: {metrics['SCAV_health']:.3f}")
+
+## Main Entry Points
+
+- **measure_text()**: Full 12-phase pipeline for raw text measurement
+- **measure_vector()**: Compute metrics for a pre-constructed semantic vector
+- **update_adaptive_parameters()**: v4.9 EMA-based parameter learning
+
+## v4.9 Enhancements
+
+- Exponential Moving Average (EMA) for smoother parameter adaptation
+- Momentum-based gamma updates to prevent oscillation
+- Learning-rate controlled lambda updates  
+- Exponentially weighted beta_retro calculations
+
+## SCAV 5D Components
+
+- shadow_magnitude: Ratio of shadow to total direction
+- attention_entropy: Information entropy of attention weights
+- consistency: Coherence through edge connectivity
+- resonance: Bidirectional attention field strength
+- SCAV_health: Integrated health metric (Part 4.12)
+
+## MetaSensor Protocol Deviation
+
+- Δ_protocol: Deviation from prescribed response
+- Ω (Omega): Directed deviation indicator
+- Ψ (Psi): Reflexive (recorded) deviation marker
+- Classification: 'choice', 'deviation', or 'computation'
 """
 
 from __future__ import annotations

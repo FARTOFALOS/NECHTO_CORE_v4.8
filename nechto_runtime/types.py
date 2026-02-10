@@ -162,3 +162,72 @@ class AdaptiveParameters:
     delta: float = 0.6      # = 1 - gamma
     lambda_val: float = 0.8
     beta_retro: float = 0.2
+
+
+# === v4.9 COMPONENT: Async Thinking Queue (Future) ===
+
+@dataclass
+class ThinkingTask:
+    """Represents a background thinking task (Roadmap: Async thinking queue).
+
+    Future versions may use Celery/Redis to process these asynchronously.
+    Current version: stub interface for future expansion.
+    """
+    task_id: str
+    operation: str  # "explore_paradox" | "estimate_shadow" | "compute_entropy"
+    context: Dict[str, Any] = field(default_factory=dict)
+    priority: float = 0.5  # [0, 1] — higher = more urgent
+    created_at: float = field(default_factory=lambda: 0.0)
+    status: str = "pending"  # "pending" | "running" | "completed" | "failed"
+    result: Optional[Dict[str, Any]] = None
+    error: Optional[str] = None
+
+
+class AsyncThinkingQueue:
+    """Interface for background thinking tasks (v4.9 stub).
+
+    Future enhancement: implement with Celery/Redis for true async processing.
+    Current version: synchronous stub for compatibility.
+    """
+
+    def __init__(self, max_queue_size: int = 100):
+        """Initialize async thinking queue."""
+        self.queue: deque[ThinkingTask] = deque(maxlen=max_queue_size)
+        self.completed: Dict[str, ThinkingTask] = {}
+        self.max_queue_size = max_queue_size
+
+    def enqueue(self, task: ThinkingTask) -> str:
+        """Enqueue a thinking task.
+
+        Returns task_id for later retrieval.
+        """
+        self.queue.append(task)
+        return task.task_id
+
+    def process_sync(self, task: ThinkingTask) -> Dict[str, Any]:
+        """Process a task synchronously (current stub behavior).
+
+        Future: replace with async executor.
+        """
+        task.status = "running"
+        result = self._execute_task(task)
+        task.status = "completed"
+        task.result = result
+        self.completed[task.task_id] = task
+        return result
+
+    def get_result(self, task_id: str) -> Optional[Dict[str, Any]]:
+        """Retrieve result of completed task."""
+        task = self.completed.get(task_id)
+        return task.result if task else None
+
+    def _execute_task(self, task: ThinkingTask) -> Dict[str, Any]:
+        """Execute a thinking task based on operation type."""
+        if task.operation == "explore_paradox":
+            return {"explored": True, "depth": task.context.get("depth", 1)}
+        elif task.operation == "estimate_shadow":
+            return {"shadow_estimate": task.context.get("magnitude", 0.5)}
+        elif task.operation == "compute_entropy":
+            return {"entropy": task.context.get("candidates_count", 5)}
+        else:
+            return {"unknown_operation": task.operation}

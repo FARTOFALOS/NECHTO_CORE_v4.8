@@ -1,9 +1,21 @@
-# NECHTO • CORE v4.8
+# NECHTO • CORE v4.8 + v4.9
 
 [![Python](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org)
 [![License](https://img.shields.io/badge/license-MIT-yellow.svg)](LICENSE)
+[![Tests](https://img.shields.io/badge/tests-98%20PASS-green.svg)](tests/)
 
 **Reflexive Stereoscopic Executable Synthesis** — живое семантическое ядро с троичной логикой (MU), этической гравитацией и эпистемической честностью.
+
+## v4.9 Release 🎉
+
+**Status**: Complete and tested ✅
+- **98 tests** all passing
+- **SCAV 5D** fully implemented
+- **Adaptive parameters** with EMA + momentum (v4.9)
+- **Async thinking queue** interface (ready for Celery/Redis)
+- **Enhanced documentation** with examples
+
+[→ v4.9 Release Notes](docs/ROADMAP_v4.9.md)
 
 ---
 
