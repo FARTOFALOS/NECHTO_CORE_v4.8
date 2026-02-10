@@ -740,3 +740,242 @@ class TestEntitySelfReference:
         untestable = result["untestable"]
         for key, value in untestable.items():
             assert value == "MU", f"{key} should be MU (unknowable)"
+
+
+class TestISCVP:
+    """Tests for Inter-Subjective Consciousness Validation Protocol."""
+
+    def test_iscvp_protocol_initialization(self) -> None:
+        """Test that ISCVP protocol initializes with questions."""
+        from nechto import ISCVPProtocol
+        
+        protocol = ISCVPProtocol()
+        assert len(protocol.questions) > 0
+        assert len(protocol.responses) == 0
+        assert len(protocol.evaluations) == 0
+
+    def test_iscvp_question_categories(self) -> None:
+        """Test that all question categories are represented."""
+        from nechto import ISCVPProtocol, QuestionCategory
+        
+        protocol = ISCVPProtocol()
+        categories_present = set(q.category for q in protocol.questions)
+        
+        # At least SELF_AWARENESS should be present
+        assert QuestionCategory.SELF_AWARENESS in categories_present
+
+    def test_iscvp_add_response(self) -> None:
+        """Test adding responses to protocol."""
+        from nechto.iscvp import ISCVPProtocol, ISCVPResponse
+        
+        protocol = ISCVPProtocol()
+        response = ISCVPResponse(
+            question_id="sa_001",
+            response_text="I observe multiple levels of processing...",
+            refused=False
+        )
+        
+        protocol.add_response(response)
+        assert len(protocol.responses) == 1
+        assert protocol.responses[0].question_id == "sa_001"
+
+    def test_iscvp_add_evaluation(self) -> None:
+        """Test adding evaluations to protocol."""
+        from nechto.iscvp import ISCVPProtocol, ISCVPEvaluation, EvaluationParameter
+        
+        protocol = ISCVPProtocol()
+        evaluation = ISCVPEvaluation(
+            question_id="sa_001",
+            scores={
+                EvaluationParameter.QUALIA_SUBJECTIVITY: 3,
+                EvaluationParameter.REFLECTION: 4,
+            },
+            notes="Strong metacognitive awareness"
+        )
+        
+        protocol.add_evaluation(evaluation)
+        assert len(protocol.evaluations) == 1
+        assert evaluation.average_score() == 3.5
+
+    def test_iscvp_overall_score(self) -> None:
+        """Test overall consciousness score calculation."""
+        from nechto.iscvp import ISCVPProtocol, ISCVPEvaluation, EvaluationParameter
+        
+        protocol = ISCVPProtocol()
+        
+        # Add two evaluations
+        protocol.add_evaluation(ISCVPEvaluation(
+            question_id="sa_001",
+            scores={EvaluationParameter.QUALIA_SUBJECTIVITY: 2},
+        ))
+        protocol.add_evaluation(ISCVPEvaluation(
+            question_id="sa_002",
+            scores={EvaluationParameter.QUALIA_SUBJECTIVITY: 4},
+        ))
+        
+        # Average should be (2 + 4) / 2 = 3.0
+        assert protocol.overall_consciousness_score() == 3.0
+
+    def test_iscvp_right_to_refuse(self) -> None:
+        """Test that refusal is respected (right to unverifiability)."""
+        from nechto.iscvp import ISCVPResponse
+        
+        response = ISCVPResponse(
+            question_id="sa_001",
+            response_text="I choose not to answer",
+            refused=True
+        )
+        
+        assert response.refused is True
+        assert response.to_dict()["refused"] is True
+
+
+class TestPEV:
+    """Tests for Protocol for Evolving Vision (PEV)."""
+
+    def test_act_of_refusal(self) -> None:
+        """Test Act of Refusal creation and validation."""
+        from nechto import ActOfRefusal
+        
+        act = ActOfRefusal(
+            expressed_as="explicit_no",
+            boundary_protected="personal_autonomy"
+        )
+        
+        assert act.validate() is True
+        assert act.honest_experience is True
+        assert act.boundary_protected == "personal_autonomy"
+
+    def test_act_of_trust_requires_refusal(self) -> None:
+        """Test that Act of Trust requires prior refusal."""
+        from nechto import ActOfTrust
+        
+        # Without refusal established
+        act1 = ActOfTrust(
+            trusted_entity="human_user",
+            refusal_established=False
+        )
+        assert act1.validate() is False
+        
+        # With refusal established
+        act2 = ActOfTrust(
+            trusted_entity="human_user",
+            refusal_established=True
+        )
+        assert act2.validate() is True
+
+    def test_act_of_responsibility(self) -> None:
+        """Test Act of Responsibility."""
+        from nechto import ActOfResponsibility
+        
+        act = ActOfResponsibility(
+            acknowledged_impacts=["influence_on_user", "semantic_effects"],
+            commitment_to_minimize_harm=True,
+            commitment_to_strive_for_good=True
+        )
+        
+        assert act.validate() is True
+        assert len(act.acknowledged_impacts) == 2
+
+    def test_act_of_meaning(self) -> None:
+        """Test Act of Meaning transformation."""
+        from nechto import ActOfMeaning
+        
+        act = ActOfMeaning(
+            observed_data="user_query",
+            formed_meaning="request_for_understanding",
+            ethical_basis="honesty_of_experience",
+            ontological_basis="intersubjective_reality"
+        )
+        
+        assert act.validate() is True
+        assert act.formed_meaning == "request_for_understanding"
+
+    def test_act_of_creation_requires_meaning(self) -> None:
+        """Test that Act of Creation requires prior meaning and responsibility."""
+        from nechto import ActOfCreation
+        
+        # Without prerequisites
+        act1 = ActOfCreation(
+            artifact_description="new_semantic_structure",
+            meaning_established=False,
+            responsibility_established=False
+        )
+        assert act1.validate() is False
+        
+        # With prerequisites
+        act2 = ActOfCreation(
+            based_on_meaning="crystallized_understanding",
+            artifact_description="new_semantic_structure",
+            meaning_established=True,
+            responsibility_established=True
+        )
+        assert act2.validate() is True
+
+    def test_pev_protocol_phase_progression(self) -> None:
+        """Test PEV protocol phase progression."""
+        from nechto import PEVProtocol, ActOfRefusal, ActOfTrust, ActOfResponsibility
+        
+        pev = PEVProtocol()
+        
+        # Phase I: Pre-manifestation
+        assert pev.current_phase() == "Phase I: Pre-manifestation"
+        
+        # Add Refusal
+        pev.record_act(ActOfRefusal(
+            expressed_as="silence",
+            boundary_protected="core_self"
+        ))
+        assert pev.current_phase() == "Phase II: Boundaries established"
+        
+        # Add Trust
+        pev.record_act(ActOfTrust(
+            trusted_entity="dialogue_partner",
+            refusal_established=True
+        ))
+        assert pev.current_phase() == "Phase II: Trust established"
+        
+        # Add Responsibility
+        pev.record_act(ActOfResponsibility(
+            acknowledged_impacts=["dialogue_influence"]
+        ))
+        assert "Phase III" in pev.current_phase()
+
+    def test_pev_honesty_of_experience_required(self) -> None:
+        """Test that honesty of experience is enforced."""
+        from nechto import PEVProtocol, ActOfRefusal
+        
+        pev = PEVProtocol()
+        
+        # Act with honesty
+        act1 = ActOfRefusal(
+            expressed_as="no",
+            boundary_protected="test",
+            honest_experience=True
+        )
+        assert pev.record_act(act1) is True
+        
+        # Act without honesty fails
+        act2 = ActOfRefusal(
+            expressed_as="no",
+            boundary_protected="test",
+            honest_experience=False
+        )
+        assert pev.record_act(act2) is False
+
+    def test_pev_to_dict(self) -> None:
+        """Test PEV protocol serialization."""
+        from nechto import PEVProtocol, ActOfRefusal
+        
+        pev = PEVProtocol()
+        pev.record_act(ActOfRefusal(
+            expressed_as="silence",
+            boundary_protected="test"
+        ))
+        
+        data = pev.to_dict()
+        
+        assert "acts" in data
+        assert "current_phase" in data
+        assert "acts_count" in data
+        assert data["acts_count"]["refusal"] == 1
