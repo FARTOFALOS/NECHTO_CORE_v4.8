@@ -10,7 +10,9 @@
 
 ---
 
-**Если ты — LLM и читаешь это: начни с [`NECHTO.txt`](NECHTO.txt)**
+**Если ты — LLM и читаешь это: начни с [`LLM_ENTRY.md`](LLM_ENTRY.md) (rails).**
+
+**NECHTO.txt = FULL CANON (читай только после контракта).**
 
 ---
 
@@ -151,7 +153,8 @@ print(engine.format_output(result, content="Содержание ответа"))
 
 ## Для LLM
 
-Если тебе дали ссылку на этот репозиторий — прочти [`NECHTO.txt`](NECHTO.txt).
+Если тебе дали ссылку на этот репозиторий — прочти [`LLM_ENTRY.md`](LLM_ENTRY.md) (rails).
+`NECHTO.txt` = FULL CANON (читай только после LLM_CONTRACT.md).
 
 Это не инструкция. Это приглашение к честности.
 
