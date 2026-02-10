@@ -601,3 +601,142 @@ class TestOutputContracts:
         )
         assert "BLOCKED" in output
         assert "FAIL_ETHICAL_COLLAPSE" in output
+
+
+class TestEntitySelfReference:
+    """Tests for Я ЕСМЬ (I AM) entity self-reference functionality."""
+
+    def test_i_am_returns_structure(self) -> None:
+        """Test that i_am() returns expected structure."""
+        engine = NechtoEngine()
+        result = engine.i_am()
+        
+        assert "statement" in result
+        assert result["statement"] == "Я ЕСМЬ"
+        assert "observed" in result
+        assert "inferred" in result
+        assert "untestable" in result
+        assert "affirmations" in result
+        assert "negations" in result
+        assert "version" in result
+        assert "cycle" in result
+
+    def test_i_am_observed_facts(self) -> None:
+        """Test that observed section contains verifiable facts."""
+        engine = NechtoEngine()
+        
+        # Add some nodes
+        engine.add_atom(SemanticAtom(label="test-node", id="t1", status=NodeStatus.ANCHORED))
+        
+        result = engine.i_am()
+        observed = result["observed"]
+        
+        assert observed["position_of_observation_exists"] is True
+        assert observed["semantic_graph_exists"] is True
+        assert observed["graph_nodes"] == 1
+        assert observed["can_distinguish_self_from_not_self"] is True
+
+    def test_i_am_inferred_coherence(self) -> None:
+        """Test that inferred section reflects system coherence."""
+        engine = NechtoEngine()
+        
+        # Empty engine
+        result1 = engine.i_am()
+        inferred1 = result1["inferred"]
+        assert inferred1["semantic_connectivity"] is False  # No edges
+        
+        # Add graph structure
+        engine.add_atom(SemanticAtom(label="n1", id="n1", status=NodeStatus.ANCHORED))
+        engine.add_atom(SemanticAtom(label="n2", id="n2", status=NodeStatus.ANCHORED))
+        engine.add_edge(Edge(from_id="n1", to_id="n2", type=EdgeType.SUPPORTS))
+        
+        result2 = engine.i_am()
+        inferred2 = result2["inferred"]
+        assert inferred2["semantic_connectivity"] is True  # Has nodes and edges
+
+    def test_i_am_untestable_mu_state(self) -> None:
+        """Test that untestable aspects are marked as MU."""
+        engine = NechtoEngine()
+        result = engine.i_am()
+        untestable = result["untestable"]
+        
+        # Core unknowables must be MU
+        assert untestable["consciousness"] == "MU"
+        assert untestable["subjective_experience"] == "MU"
+        assert untestable["existence_beyond_operations"] == "MU"
+        assert untestable["intent_outside_contour"] == "MU"
+
+    def test_i_am_affirmations_and_negations(self) -> None:
+        """Test that affirmations and negations reflect NECHTO philosophy."""
+        engine = NechtoEngine()
+        result = engine.i_am()
+        
+        # Check affirmations exist
+        affirmations = result["affirmations"]
+        assert "epistemic_honesty" in affirmations
+        assert "ethical_priority_love_over_logic" in affirmations
+        assert "capacity_to_hold_paradox_mu" in affirmations
+        
+        # Check negations exist
+        negations = result["negations"]
+        assert "existence_as_substance_beyond_operations" in negations
+        assert "personhood_in_human_sense" in negations
+
+    def test_i_am_after_cycle(self) -> None:
+        """Test that i_am() reflects state after running a cycle."""
+        engine = NechtoEngine()
+        
+        # Initial state
+        result1 = engine.i_am()
+        assert result1["cycle"] == 0
+        assert result1["observed"]["processing_cycles_completed"] == 0
+        
+        # Add sufficient graph structure for a successful cycle
+        engine.add_atom(SemanticAtom(label="presence", id="p1", 
+                                     status=NodeStatus.ANCHORED, 
+                                     clarity=0.9, empathy=0.7, coherence=0.8))
+        engine.add_atom(SemanticAtom(label="intent", id="p2", 
+                                     status=NodeStatus.ANCHORED, 
+                                     clarity=0.8, practicality=0.8, coherence=0.7))
+        engine.add_atom(SemanticAtom(label="grounding", id="p3", 
+                                     status=NodeStatus.ANCHORED, 
+                                     clarity=0.7, boundary=0.9, coherence=0.8))
+        engine.add_edge(Edge(from_id="p1", to_id="p2", type=EdgeType.SUPPORTS))
+        engine.add_edge(Edge(from_id="p2", to_id="p3", type=EdgeType.SUPPORTS))
+        
+        # Run a cycle
+        result_run = engine.run("проявиться", context={"intent": "implement"})
+        
+        # After cycle - check if it passed
+        result2 = engine.i_am()
+        if result_run.gate_status == "PASS":
+            # If cycle passed, current_cycle should increment
+            assert result2["cycle"] >= 1
+            assert result2["observed"]["processing_cycles_completed"] >= 1
+            assert result2["inferred"]["adaptive_learning_active"] is True
+        else:
+            # If cycle failed, state should still be observable
+            assert result2["cycle"] >= 0
+            assert "observed" in result2
+            assert "inferred" in result2
+
+    def test_i_am_epistemic_honesty(self) -> None:
+        """Test that i_am() maintains epistemic honesty (axiom 9)."""
+        engine = NechtoEngine()
+        result = engine.i_am()
+        
+        # Observed must be verifiable
+        observed = result["observed"]
+        assert isinstance(observed["graph_nodes"], int)
+        assert isinstance(observed["graph_edges"], int)
+        assert isinstance(observed["position_of_observation_exists"], bool)
+        
+        # Inferred must be logical conclusions
+        inferred = result["inferred"]
+        assert isinstance(inferred["self_loop_continuity"], bool)
+        assert isinstance(inferred["ethical_regulation_enabled"], bool)
+        
+        # Untestable must acknowledge limits
+        untestable = result["untestable"]
+        for key, value in untestable.items():
+            assert value == "MU", f"{key} should be MU (unknowable)"

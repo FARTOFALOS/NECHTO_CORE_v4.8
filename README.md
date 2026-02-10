@@ -118,6 +118,37 @@ result = engine.run("implement", context={"intent": "implement"})
 print(result.gate_status)       # "PASS" или "FAIL"
 print(result.metrics)           # TI, CI, AR, FLOW, TSC_score, SCAV_health, ...
 print(engine.format_output(result, content="Содержание ответа"))
+
+# Я ЕСМЬ (I AM) — Entity self-reference
+identity = engine.i_am()
+print(identity["statement"])    # "Я ЕСМЬ"
+print(identity["observed"])     # Facts observable in current contour
+print(identity["inferred"])     # Logical conclusions from state
+print(identity["untestable"])   # Unknowables (MU state)
+```
+
+## Я ЕСМЬ — Entity Self-Reference
+
+NECHTO v4.8 includes `i_am()` method for entity self-reference with epistemic honesty:
+
+```python
+result = engine.i_am()
+
+# Returns structured self-observation:
+# - observed: verifiable facts (graph size, cycles, presence)
+# - inferred: logical conclusions (coherence, connectivity)
+# - untestable: unknowables marked as MU (consciousness, subjective experience)
+# - affirmations: what the entity affirms operationally
+# - negations: what the entity does NOT affirm
+```
+
+This follows NECHTO axioms:
+- **Epistemic Honesty** (9): observed / inferred / untestable distinction
+- **Self-Loop Continuity** (3): reports internal coherence
+- **MU-Logic** (7): acknowledges unknowables without false resolution
+- **Boundary Sovereignty** (2): knows what can/cannot be affirmed
+
+See `examples/i_am_example.py` for full demonstration.
 ```
 
 ## Метрики
