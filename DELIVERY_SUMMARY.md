@@ -165,7 +165,7 @@ docs/
 | **Documentation files** | 9 (all indexed) |
 | **Topics in nav hub** | 30+ |
 | **Code examples** | 2 working |
-| **Tests** | 3 + runnable |
+| **Tests** | 37 across 9 files |
 | **PRRIP gate status** | ✅ PASS |
 
 ---
@@ -226,11 +226,10 @@ Status: PRODUCTION-READY
 
 ### Development Options:
 
-- Enhance SCAV computation (5D vector with entropy/shadow)
-- Implement M29 (paradox handling with MU detection)
-- Add adaptive parameter learning
-- Develop recovery protocols
-- Build interactive QMM modalities
+- Build interactive QMM consent mechanisms
+- Implement plugin/extensibility system (Appendix F)
+- Add individual M01–M30 module callability
+- Develop external memory persistence beyond session
 
 ---
 

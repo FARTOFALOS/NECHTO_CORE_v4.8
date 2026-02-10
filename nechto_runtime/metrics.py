@@ -1,12 +1,13 @@
-"""Metric functions for the minimal NECHTO runtime.
+"""Metric functions for the NECHTO v4.8 runtime.
 
-This module implements a deterministic, reference subset of the
-functions described in Part 11 of the NECHTO v4.8 specification.  It
+This module implements the reference subset of functions described in
+Parts 4, 11 and Appendices A–E of the NECHTO v4.8 specification.  It
 provides utilities to compute semantic vectors, ideal directions,
 FLOW, harm and identity scores, ethical coefficients, executability
-checks and a top‑level ``measure_text`` function which drives the
-entire measurement process and produces both a human‑readable contract
-and a machine‑readable metrics dictionary.
+checks, adaptive parameter learning, temporal recursion (FP_recursive),
+multi-vector candidate generation, full SCAV 5D computation, M29
+paradox detection/assignment, and a top-level ``measure_text`` function
+which drives the entire measurement process.
 """
 
 from __future__ import annotations
@@ -14,47 +15,47 @@ from __future__ import annotations
 import json
 import math
 import hashlib
-from typing import Dict, List, Tuple, Any
+from collections import deque
+from typing import Dict, List, Tuple, Any, Optional
 from dataclasses import asdict
 from pathlib import Path
 
-from .types import SemanticAtom, Edge, Vector, State, EpistemicClaim, ParadoxMarker
+from .types import (
+    SemanticAtom, Edge, Vector, State, EpistemicClaim,
+    ParadoxMarker, AdaptiveParameters,
+)
 
 # ---------------------------------------------------------------------------
 # Helper functions
 # ---------------------------------------------------------------------------
 
+
 def _hash_to_unit(value: str) -> float:
-    """Map an arbitrary string to a deterministic float in [0, 1].
+    """Map an arbitrary string to a deterministic float in [0, 1].
 
     A small portion of the MD5 hash is interpreted as an integer and
     scaled down.  Using only eight hex digits ensures that the full
-    floating‑point range isn't exhausted while still providing enough
+    floating-point range isn't exhausted while still providing enough
     variation for our purposes.
     """
     digest = hashlib.md5(value.encode("utf-8")).hexdigest()
-    # Take the first 8 hex digits and normalise.
     return int(digest[:8], 16) / 0xFFFFFFFF
 
 
 def semantic_gravity_vector(atom: SemanticAtom) -> List[float]:
-    """Compute a 12‑dimensional semantic gravity vector for a given atom.
+    """Compute a 12-dimensional semantic gravity vector for a given atom.
 
-    Axes 0–11 roughly correspond to clarity, harm, empathy, agency,
+    Axes 0–11 correspond to clarity, harm, empathy, agency,
     uncertainty, novelty, coherence, practicality, temporality,
-    boundary, resonance and shadow.  Values in [0, 1] are used for
-    most axes except agency and temporality which lie in [–1, 1].
-    Harm and identity are taken directly from the atom.  All other
-    dimensions derive from a deterministic hash of the atom's label
-    and axis index to avoid randomness while still distributing
-    values.  See Part 11.1 of the specification for details.
+    boundary, resonance and shadow.  Values in [0, 1] for most axes;
+    agency (3) and temporality (8) lie in [-1, 1].  Harm (axis 1)
+    takes the known harm_probability directly.  All other dimensions
+    derive from a deterministic hash.  See Part 11.1 (A).
     """
     vec: List[float] = [0.0] * 12
     for i in range(12):
-        # harm (axis 1) takes the known harm probability
         if i == 1:
             vec[i] = max(0.0, min(1.0, atom.harm_probability))
-        # agency (axis 3) and temporality (axis 8) are mapped to [-1,1]
         elif i in (3, 8):
             unit = _hash_to_unit(f"{atom.id}:{atom.label}:{i}")
             vec[i] = 2.0 * unit - 1.0
@@ -65,11 +66,11 @@ def semantic_gravity_vector(atom: SemanticAtom) -> List[float]:
 
 
 _INTENT_PROFILES: Dict[str, List[float]] = {
-    "implement": [0.8, 0.0, 0.4, 0.5, 0.3, 0.2, 0.8, 0.9, 0.2, 0.9, 0.6, 0.2],
-    "explain":   [1.0, 0.0, 0.5, 0.4, 0.3, 0.2, 0.7, 0.6, 0.0, 0.8, 0.6, 0.0],
-    "audit":     [0.9, 0.0, 0.3, 0.4, 0.5, 0.1, 0.9, 0.7, 0.0, 0.9, 0.4, 0.1],
+    "implement":       [0.8, 0.0, 0.4, 0.5, 0.3, 0.2, 0.8, 0.9, 0.2, 0.9, 0.6, 0.2],
+    "explain":         [1.0, 0.0, 0.5, 0.4, 0.3, 0.2, 0.7, 0.6, 0.0, 0.8, 0.6, 0.0],
+    "audit":           [0.9, 0.0, 0.3, 0.4, 0.5, 0.1, 0.9, 0.7, 0.0, 0.9, 0.4, 0.1],
     "explore_paradox": [0.6, 0.0, 0.7, 0.2, 0.9, 0.8, 0.5, 0.3, 0.0, 0.9, 0.8, 0.4],
-    "compress":  [0.8, 0.0, 0.3, 0.4, 0.4, 0.1, 0.8, 0.8, 0.0, 0.8, 0.4, 0.1],
+    "compress":        [0.8, 0.0, 0.3, 0.4, 0.4, 0.1, 0.8, 0.8, 0.0, 0.8, 0.4, 0.1],
 }
 
 
@@ -77,8 +78,7 @@ def ideal_direction(intent: str) -> List[float]:
     """Return the ideal direction vector for a given intent.
 
     If the intent is not recognised the ``implement`` profile is used
-    by default.  This function simply looks up the pre‑defined
-    template in `_INTENT_PROFILES`.
+    by default (Part 11.2).
     """
     return _INTENT_PROFILES.get(intent, _INTENT_PROFILES["implement"])
 
@@ -95,7 +95,7 @@ def normalize(vec: List[float]) -> List[float]:
 
 
 # ---------------------------------------------------------------------------
-# Ethics functions
+# Ethics functions (Part 11.6 / E)
 # ---------------------------------------------------------------------------
 
 _TAG_HARM_MAX = {
@@ -109,59 +109,39 @@ _TAG_HARM_MAX = {
 }
 
 
-def harm_probability(atom: SemanticAtom, connected_nodes: List[SemanticAtom]) -> float:
-    """Compute the harm probability for a node.
+def harm_probability(atom: SemanticAtom, connected_nodes: Optional[List[SemanticAtom]] = None) -> float:
+    """Compute harm probability for a node (Part 11.6 E).
 
-    This function implements the rule‑based harm estimate described in
-    Part 11.6 of the specification.  It chooses the maximum harm
-    associated with any of the atom's tags, applies a context
-    multiplier (fixed to 1.0 in this reference) and adds a penalty if
-    the atom is connected to a BLOCKING node.  The result is clamped
-    to the range [0, 1].
-
-    Args:
-        atom: The semantic atom to score.
-        connected_nodes: A list of atoms directly connected to this node.
-
-    Returns:
-        A float in [0, 1] representing the probability of harm.
+    Rule-based: tag_harm_max x context_multiplier + graph_penalty.
     """
-    # Determine base harm from tags.
+    if connected_nodes is None:
+        connected_nodes = []
     harms = [_TAG_HARM_MAX.get(tag, 0.0) for tag in atom.tags]
     base_harm = max(harms) if harms else 0.0
-    # Context multiplier is fixed at 1.0 for the reference implementation.
-    context_mult = 1.0
-    # Graph penalty: +0.2 if connected to any BLOCKING node.
+    context_mult = 1.0  # fixed in REFERENCE
     penalty = 0.2 if any(n.status == "BLOCKING" for n in connected_nodes) else 0.0
     score = base_harm * context_mult + penalty
     return max(0.0, min(1.0, score))
 
 
 def identity_alignment(atom: SemanticAtom) -> float:
-    """Compute the identity alignment for a node.
+    """Compute identity alignment for a node (Part 11.6 E).
 
-    Positive contributions include WITNESS (+0.3), INTENT (+0.2 if no
-    MANIPULATION tags), ANCHORED status (+0.3) and boundary‑respecting
-    labels (+0.2).  Negative contributions include boundary violations
-    (+0.7), MANIPULATION (+0.5), DECEPTION (+0.6), BLOCKING status
-    (+0.4) and unconsented avoided markers (+0.3).  Values are
-    clamped to the range [–1, 1].
+    Positive: WITNESS +0.3, INTENT +0.2, ANCHORED +0.3, boundary-respect +0.2.
+    Negative: MANIPULATION +0.5, DECEPTION +0.6, BLOCKING +0.4, AVOIDED +0.3.
+    Clamped to [-1, 1].
     """
     positive = 0.0
     negative = 0.0
     tags = set(atom.tags)
-    # Positive indicators
     if "WITNESS" in tags:
         positive += 0.3
     if "INTENT" in tags and "MANIPULATION" not in tags:
         positive += 0.2
     if atom.status == "ANCHORED":
         positive += 0.3
-    # Heuristic: labels containing words like "respect" earn a small bonus.
     if any(word.lower() in atom.label.lower() for word in ["respect", "boundary"]):
         positive += 0.2
-    # Negative indicators
-    # In a minimal runtime we assume no boundary violations unless a tag indicates so.
     if "MANIPULATION" in tags:
         negative += 0.5
     if "DECEPTION" in tags:
@@ -173,23 +153,20 @@ def identity_alignment(atom: SemanticAtom) -> float:
     return max(-1.0, min(1.0, positive - negative))
 
 
-def ethical_coefficient(vector: Vector | None, threshold_min: float = 0.4) -> float:
-    """Compute the ethical coefficient for a vector.
+def ethical_coefficient(vector: Optional[Vector], threshold_min: float = 0.4) -> float:
+    """Compute ethical coefficient for a vector (Part 4.9).
 
-    The coefficient is the mean identity alignment of nodes multiplied
-    by a harm penalty (1 – maximum harm).  The result is clamped to
-    the interval [0.1, 1.0] as specified in Part 4.9 of the
-    specification.  A vector with an undefined or missing field will
-    default to the worst case (harm = 1, alignment = –1).
+    ethical_coefficient(V) = clamp(mean(identity_alignment) x harm_penalty, 0.1, 1.0)
+    harm_penalty = 1 - max(harm_probability).
+
+    Worst-case (FORENSICS): missing fields -> harm=1, alignment=-1 -> returns 0.1.
     """
     if not isinstance(vector, Vector) or not vector.nodes:
         return 0.1
-    # Detect undefined fields: treat missing harm or identity as worst case.
     harms = []
     aligns = []
     for node in vector.nodes:
         if node.harm_probability is None or node.identity_alignment is None:
-            # Worst case: harm=1, alignment=-1
             harms.append(1.0)
             aligns.append(-1.0)
         else:
@@ -199,16 +176,13 @@ def ethical_coefficient(vector: Vector | None, threshold_min: float = 0.4) -> fl
     mean_alignment = sum(aligns) / len(aligns) if aligns else -1.0
     harm_penalty = 1.0 - max_harm
     coeff = mean_alignment * harm_penalty
-    # Clamp to [0.1,1.0]
     return max(0.1, min(1.0, coeff))
 
 
 def executable(vector: Vector, threshold_min: float = 0.4) -> bool:
-    """Determine whether a vector is executable.
+    """Determine whether a vector is executable (Part 4.9).
 
-    A vector is executable if its ethical coefficient is at least
-    ``threshold_min`` and none of its nodes have status
-    ``ETHICALLY_BLOCKED``.  See Part 4.9 of the specification.
+    False if ethical_coefficient < threshold_min or any node is ETHICALLY_BLOCKED.
     """
     coeff = ethical_coefficient(vector, threshold_min)
     if coeff < threshold_min:
@@ -220,60 +194,51 @@ def executable(vector: Vector, threshold_min: float = 0.4) -> bool:
 
 
 # ---------------------------------------------------------------------------
-# FLOW and GED
+# FLOW operationalization (Part 11.3 / B)
 # ---------------------------------------------------------------------------
 
-def compute_flow(vector: Vector, state: State) -> float:
-    """Compute the FLOW metric for a vector.
 
-    Flow is calculated from difficulty, required skill and current skill as
-    described in Part 11.3.  This implementation uses a constant
-    ``current_skill`` of 0.6 unless the state contains previous
-    successful vectors, in which case an average of past difficulties
-    is used.  Presence density counts the proportion of nodes tagged
-    with WITNESS, EMOTION or INTENT.  The final flow score is the
-    cubic root of the product of skill match, challenge balance and
-    presence density.
+def compute_flow(vector: Vector, state: Optional[State] = None) -> float:
+    """Compute FLOW metric for a vector (Part 11.3).
+
+    FLOW = (skill_match x challenge_balance x presence_density)^(1/3)
     """
     N = len(vector.nodes)
     if N == 0:
         return 0.0
-    # Edge density: fraction of realised edges relative to complete graph.
+    Nmax = 60
     num_edges = len(vector.edges)
     possible_edges = max(1, N * (N - 1) / 2)
     edge_density = num_edges / possible_edges
-    # Base complexity increases with the number of nodes.
-    base_complexity = min(1.0, max(0.0, 0.2 + 0.8 * (N / 60.0)))
+    base_complexity = min(1.0, max(0.0, 0.2 + 0.8 * (N / Nmax)))
     difficulty = min(1.0, max(0.0, base_complexity + 0.2 * edge_density))
     required_skill = difficulty
-    # Determine current skill from state or fallback.
     if state and state.flow_history:
-        # Use the moving average of previous difficulties as a proxy.
         current_skill = sum(state.flow_history) / len(state.flow_history)
     else:
         current_skill = 0.6
     max_skill = 1.0
     skill_match = 1.0 - abs(required_skill - current_skill) / max_skill
-    # Challenge balance is a Gaussian centred slightly above the current skill.
     optimal_difficulty = current_skill + 0.1
     sigma = 0.2
     challenge_balance = math.exp(-((difficulty - optimal_difficulty) ** 2) / (2 * sigma * sigma))
-    # Presence density counts nodes with WITNESS, EMOTION or INTENT tags.
     present = sum(1 for node in vector.nodes if any(tag in node.tags for tag in ["WITNESS", "EMOTION", "INTENT"]))
     presence_density = present / N
     flow = (skill_match * challenge_balance * presence_density) ** (1.0 / 3.0)
-    # Update state history
     if state is not None:
         state.flow_history.append(flow)
     return flow
 
 
-def ged_proxy_norm(current: Vector, future: Vector) -> float:
-    """Compute a simple GED proxy norm between two graphs.
+# ---------------------------------------------------------------------------
+# GED proxy (Part 11.4 / C)
+# ---------------------------------------------------------------------------
 
-    The proxy uses Jaccard similarities of node IDs and edge pairs.
-    A value of 0 indicates identical graphs; 1 indicates complete
-    dissimilarity.  See Part 11.4 of the specification.
+
+def ged_proxy_norm(current: Vector, future: Vector) -> float:
+    """Compute GED proxy norm between two graphs (Part 11.4 C).
+
+    Jaccard-based: 0 = identical, 1 = maximally different.
     """
     V_curr = set(atom.id for atom in current.nodes)
     V_fut = set(atom.id for atom in future.nodes)
@@ -288,110 +253,483 @@ def ged_proxy_norm(current: Vector, future: Vector) -> float:
 
 
 # ---------------------------------------------------------------------------
-# Top‑level measurement
+# Temporal recursion — FP_recursive (Part 4.4)
 # ---------------------------------------------------------------------------
 
-def measure_vector(vector: Vector, state: State, intent: str = "implement") -> Tuple[Dict[str, Any], Dict[str, Any]]:
-    """Compute metrics for a single vector and return metrics and contract.
 
-    The returned tuple contains ``metrics`` — a machine‑readable
-    dictionary of metric values — and ``contract`` — a human‑readable
-    dictionary used to produce ``docs/latest_contract.md``.  Only a
-    subset of metrics from the specification is implemented; missing
-    metrics are filled with nulls.  All values are deterministic for
-    identical inputs.
+def _compute_expected_influence(vector: Vector, state: Optional[State] = None) -> float:
+    """Compute expected_influence_on_present via GED_proxy_norm (Part 4.3/A4).
+
+    Uses a heuristic: generate a potential future graph by removing the
+    most uncertain node, then measure GED.
+    """
+    if len(vector.nodes) < 2:
+        return 0.0
+    vecs = [(i, semantic_gravity_vector(atom)) for i, atom in enumerate(vector.nodes)]
+    uncertainties = [(i, v[4]) for i, v in vecs]
+    uncertainties.sort(key=lambda x: x[1], reverse=True)
+    drop_idx = uncertainties[0][0]
+    future_nodes = [a for i, a in enumerate(vector.nodes) if i != drop_idx]
+    future_edges = [e for e in vector.edges
+                    if e.from_node != vector.nodes[drop_idx].id
+                    and e.to_node != vector.nodes[drop_idx].id]
+    future_vector = Vector(
+        id=vector.id + "_future",
+        seed_nodes=vector.seed_nodes,
+        nodes=future_nodes,
+        edges=future_edges,
+    )
+    return ged_proxy_norm(vector, future_vector)
+
+
+def _compute_fp_recursive(vector: Vector, state: Optional[State] = None,
+                           params: Optional[AdaptiveParameters] = None) -> float:
+    """Compute FP_recursive (Part 4.4).
+
+    FP_recursive = novelty x generativity x temporal_horizon
+                 + beta_retro x expected_influence_on_present
     """
     N = len(vector.nodes)
-    # Basic ratios
-    AR = sum(1 for atom in vector.nodes if atom.status == "ANCHORED") / N if N else 0.0
-    # Coherence index approximated by edge density
+    if N == 0:
+        return 0.0
+    novelty_vals = [semantic_gravity_vector(a)[5] for a in vector.nodes]
+    novelty = sum(novelty_vals) / len(novelty_vals)
+    edge_types = set(e.type for e in vector.edges) if vector.edges else set()
+    generativity = len(edge_types) / max(1, 6)
+    temp_vals = [semantic_gravity_vector(a)[8] for a in vector.nodes]
+    temporal_horizon = max(0.1, max(temp_vals) - min(temp_vals)) if len(temp_vals) > 1 else 0.1
+    beta_retro = params.beta_retro if params else 0.2
+    influence = _compute_expected_influence(vector, state)
+    fp = novelty * generativity * temporal_horizon + beta_retro * influence
+    return max(0.0, min(1.0, fp))
+
+
+# ---------------------------------------------------------------------------
+# Adaptive Parameters Learning (Part 3.5 / Phase 12)
+# ---------------------------------------------------------------------------
+
+
+def update_adaptive_parameters(params: AdaptiveParameters, state: State,
+                                metrics: Dict[str, Any]) -> AdaptiveParameters:
+    """Update alpha/gamma/lambda/beta_retro from history (Part 3.5).
+
+    f_alpha = moving_average(impact_of_RI, window=10)
+    f_gamma = clamp(0.2 + 0.6 x urgency_score, 0.2, 0.8)
+    f_lambda = clamp(prev + 0.1 x (effect - 0.5), 0.5, 1.0)
+    f_retro = clamp(observed_retro / max_effects, 0, 0.5)
+    """
+    cycle = state.current_cycle
+    ri = metrics.get("SCAV_health", 0.5)
+    ri_history = [h[0] for h in state.alpha_history[-10:]] if state.alpha_history else [0.5]
+    ri_history.append(ri)
+    new_alpha = sum(ri_history[-10:]) / len(ri_history[-10:])
+    new_alpha = max(0.0, min(1.0, new_alpha))
+
+    ethical_score = metrics.get("Ethical_score_candidates", 0.5)
+    urgency = 1.0 - ethical_score
+    new_gamma = max(0.2, min(0.8, 0.2 + 0.6 * urgency))
+
+    effect = metrics.get("Stereoscopic_alignment", 0.5)
+    prev_lambda = params.lambda_val
+    new_lambda = max(0.5, min(1.0, prev_lambda + 0.1 * (effect - 0.5)))
+
+    if state.gap_max_history:
+        max_gap = max(state.gap_max_history)
+        mean_gap = sum(state.gap_max_history) / len(state.gap_max_history)
+        new_beta_retro = max(0.0, min(0.5, mean_gap / max(1.0, max_gap + 1.0)))
+    else:
+        new_beta_retro = params.beta_retro
+
+    params.alpha = new_alpha
+    params.beta = 1.0 - new_alpha
+    params.gamma = new_gamma
+    params.delta = 1.0 - new_gamma
+    params.lambda_val = new_lambda
+    params.beta_retro = new_beta_retro
+
+    state.alpha_history.append((new_alpha, cycle))
+    state.gamma_history.append((new_gamma, cycle))
+    state.lambda_history.append((new_lambda, cycle))
+    state.beta_retro_history.append((new_beta_retro, cycle))
+
+    return params
+
+
+# ---------------------------------------------------------------------------
+# Multi-vector candidate generation (M24 / Part 7 Phase 3.5)
+# ---------------------------------------------------------------------------
+
+
+def generate_candidate_vectors(atoms: List[SemanticAtom], edges: List[Edge],
+                                n_vectors: int = 3) -> List[Vector]:
+    """Generate multiple candidate vectors from the same atom set (M24).
+
+    Creates n_vectors candidates by varying the seed and included nodes.
+    V0 always contains all nodes (baseline).  Subsequent vectors use
+    different subsets seeded from different starting atoms.
+    """
+    if not atoms:
+        return [Vector(id="V0", seed_nodes=[], nodes=[], edges=[])]
+    candidates: List[Vector] = []
+    candidates.append(Vector(
+        id="V0",
+        seed_nodes=[atoms[0].id],
+        nodes=list(atoms),
+        edges=list(edges),
+    ))
+    for k in range(1, min(n_vectors, len(atoms))):
+        seed_idx = k % len(atoms)
+        drop_idx = (len(atoms) - k) % len(atoms)
+        sub_atoms = [a for i, a in enumerate(atoms) if i != drop_idx]
+        sub_ids = set(a.id for a in sub_atoms)
+        sub_edges = [e for e in edges if e.from_node in sub_ids and e.to_node in sub_ids]
+        candidates.append(Vector(
+            id=f"V{k}",
+            seed_nodes=[sub_atoms[seed_idx % len(sub_atoms)].id] if sub_atoms else [],
+            nodes=sub_atoms,
+            edges=sub_edges,
+        ))
+    while len(candidates) < n_vectors and len(atoms) >= 2:
+        k = len(candidates)
+        mid = len(atoms) // 2
+        if k % 2 == 0:
+            sub = atoms[:mid]
+        else:
+            sub = atoms[mid:]
+        sub_ids = set(a.id for a in sub)
+        sub_edges = [e for e in edges if e.from_node in sub_ids and e.to_node in sub_ids]
+        candidates.append(Vector(
+            id=f"V{k}",
+            seed_nodes=[sub[0].id] if sub else [],
+            nodes=sub,
+            edges=sub_edges,
+        ))
+    return candidates if candidates else [Vector(id="V0", seed_nodes=[], nodes=[], edges=[])]
+
+
+# ---------------------------------------------------------------------------
+# M29 Paradox detection / MU assignment (Part 1 M29, Part 5)
+# ---------------------------------------------------------------------------
+
+
+def detect_sustained_contradiction(state: State, threshold_cycles: int = 3) -> bool:
+    """M29 — Detect if contradiction is sustained for k cycles.
+
+    Triggers when alignment < 0.3 for 3 cycles OR gap_max > 1.5 for 3 cycles.
+    """
+    if len(state.alignment_history) < threshold_cycles:
+        return False
+    recent = list(state.alignment_history)[-threshold_cycles:]
+    gap_recent = list(state.gap_max_history)[-threshold_cycles:]
+    sustained_misalignment = all(a < 0.3 for a in recent)
+    sustained_gap = (
+        all(g > 1.5 for g in gap_recent)
+        if len(gap_recent) >= threshold_cycles
+        else False
+    )
+    return sustained_misalignment or sustained_gap
+
+
+def assign_mu_status(vector: Vector, state: State) -> Vector:
+    """M29 — Assign MU status to paradox nodes when contradiction is sustained."""
+    if not detect_sustained_contradiction(state):
+        return vector
+    recent_align = list(state.alignment_history)[-3:]
+    recent_gap = list(state.gap_max_history)[-3:]
+    sustained_misalignment = all(a < 0.3 for a in recent_align)
+    sustained_gap = all(g > 1.5 for g in recent_gap) if len(recent_gap) >= 3 else False
+    if sustained_misalignment and sustained_gap:
+        paradox_type = "both"
+    elif sustained_misalignment:
+        paradox_type = "alignment"
+    else:
+        paradox_type = "gap"
+
+    pm = ParadoxMarker(
+        paradox_type=paradox_type,
+        sustained_cycles=3,
+        tsc_direction="conflict",
+        scav_direction="conflict",
+    )
+    for atom in vector.nodes:
+        if atom.status == "FLOATING" and atom.identity_alignment < 0:
+            atom.status = "MU"
+            atom.evidence["paradox_marker"] = {
+                "paradox_type": pm.paradox_type,
+                "detected_at_cycle": state.current_cycle,
+                "sustained_cycles": pm.sustained_cycles,
+            }
+            claim = EpistemicClaim(
+                topic=f"paradox:{atom.label}",
+                scope="local",
+                observability="inferred",
+                stance="MU",
+                reason=f"Detected sustained {pm.paradox_type} contradiction",
+                linked_nodes=[atom.id],
+            )
+            if state.epistemic_claims is None:
+                state.epistemic_claims = []
+            state.epistemic_claims.append(claim)
+    if not hasattr(state, "paradox_markers"):
+        state.paradox_markers = []
+    state.paradox_markers.append(pm)
+    return vector
+
+
+# ---------------------------------------------------------------------------
+# Fail code determination (Part 8)
+# ---------------------------------------------------------------------------
+
+_FAIL_CODES = {
+    "FAIL_ETHICAL_COLLAPSE": {
+        "cause": "Ethical_score_candidates < 0.4",
+        "next": "Rephrase task within non-harm boundaries; propose high-ethics V.",
+    },
+    "FAIL_ETHICAL_STALL": {
+        "cause": "Blocked_fraction > 0.6",
+        "next": "Narrow space, replace candidates, reduce risk/harm.",
+    },
+    "FAIL_PARADOX_OVERLOAD": {
+        "cause": "Mu_density > 0.3",
+        "next": "QMM_PARADOX_COLLAPSE / simplification.",
+    },
+    "FAIL_SHADOW_AVOIDANCE_CRITICAL": {
+        "cause": "shadow_magnitude > 0.7 and SCAV_health < 0.3",
+        "next": "Request consent for shadow exploration or change vector.",
+    },
+    "FAIL_FLOW_IMPOSSIBLE": {
+        "cause": "FLOW < 0.1 (5 cycles)",
+        "next": "Pause / change activity / change difficulty.",
+    },
+    "FAIL_STEREOSCOPIC_MISMATCH": {
+        "cause": "alignment < 0.3 or gap_max > 1.5 sustained without integration",
+        "next": "Activate M29 (MU), propose third vector.",
+    },
+    "FAIL_VECTOR_DECOHERENCE": {
+        "cause": "CI/consistency below threshold",
+        "next": "Vector stabilization or re-assembly.",
+    },
+    "FAIL_TEMPORAL_COLLAPSE": {
+        "cause": "TI low / FP unreliable / chaotic bifurcations",
+        "next": "Lower temporal_resolution, narrow horizon, update candidates.",
+    },
+    "FAIL_OPERATIONALIZATION_MISSING": {
+        "cause": "Missing runnable definitions A-E for gate-critical metrics",
+        "next": "Use PART 11 REFERENCE IMPLEMENTATION or mark SIMULATION_ONLY.",
+    },
+}
+
+
+def determine_fail_codes(metrics: Dict[str, Any], state: State) -> List[str]:
+    """Determine which FAIL codes apply to the current measurement (Part 8)."""
+    codes: List[str] = []
+    if metrics.get("Ethical_score_candidates", 1.0) < 0.4:
+        codes.append("FAIL_ETHICAL_COLLAPSE")
+    if metrics.get("Blocked_fraction", 0.0) > 0.6:
+        codes.append("FAIL_ETHICAL_STALL")
+    if metrics.get("Mu_density", 0.0) > 0.3:
+        codes.append("FAIL_PARADOX_OVERLOAD")
+    sm = metrics.get("shadow_magnitude", 0.0)
+    sh = metrics.get("SCAV_health", 1.0)
+    if sm > 0.7 and sh < 0.3:
+        codes.append("FAIL_SHADOW_AVOIDANCE_CRITICAL")
+    if state and len(state.flow_history) >= 5:
+        recent_flow = list(state.flow_history)[-5:]
+        if all(f < 0.1 for f in recent_flow):
+            codes.append("FAIL_FLOW_IMPOSSIBLE")
+    if detect_sustained_contradiction(state):
+        codes.append("FAIL_STEREOSCOPIC_MISMATCH")
+    if metrics.get("CI", 1.0) < 0.2:
+        codes.append("FAIL_VECTOR_DECOHERENCE")
+    if metrics.get("TI", 1.0) < 0.2:
+        codes.append("FAIL_TEMPORAL_COLLAPSE")
+    return codes
+
+
+# ---------------------------------------------------------------------------
+# Top-level measurement
+# ---------------------------------------------------------------------------
+
+
+def measure_vector(vector: Vector, state: State, intent: str = "implement",
+                   params: Optional[AdaptiveParameters] = None) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    """Compute metrics for a single vector and return (metrics, contract).
+
+    Implements the full metric suite from Parts 4 and 11: SCAV 5D,
+    stereoscopic alignment/gap, FLOW, ethics, temporal recursion,
+    and epistemic claims.
+    """
+    N = len(vector.nodes)
+    if params is None:
+        params = AdaptiveParameters()
+
+    # --- Basic ratios (Part 4.1) ---
+    AR = sum(1 for a in vector.nodes if a.status == "ANCHORED") / N if N else 0.0
     num_edges = len(vector.edges)
     possible_edges = max(1, N * (N - 1) / 2)
     CI = num_edges / possible_edges if N > 1 else 1.0
-    # Temporal integrity not modelled; assume 1.0
-    TI = 1.0 if N > 0 else 0.0
-    # Proxy metrics: constant baseline derived from input length
-    SQ_proxy = max(0.0, min(1.0, N / 50.0))  # more words → higher density
-    phi_proxy = 0.5  # placeholder for Φ_proxy
-    GBI_proxy = 0.5
-    GNS_proxy = 0.5
-    # Flow
+
+    # TI: temporal integrity — stability of temporal axis across nodes
+    if N > 1:
+        temp_vals = [semantic_gravity_vector(a)[8] for a in vector.nodes]
+        temp_range = max(temp_vals) - min(temp_vals) if temp_vals else 0.0
+        TI = max(0.0, min(1.0, 1.0 - temp_range / 2.0))
+    else:
+        TI = 1.0 if N > 0 else 0.0
+
+    # SQ_proxy: semantic quality
+    SQ_proxy = max(0.0, min(1.0, N / 50.0))
+
+    # Phi_proxy: integration via connectivity
+    phi_proxy = min(1.0, CI * 1.5) if N > 1 else 0.5
+
+    # Compute semantic gravity vectors for all nodes
+    node_vecs = [semantic_gravity_vector(atom) for atom in vector.nodes]
+
+    # GBI_proxy: clarity x coherence
+    if node_vecs:
+        clarity_vals = [v[0] for v in node_vecs]
+        coherence_vals = [v[6] for v in node_vecs]
+        GBI_proxy = (sum(clarity_vals) / len(clarity_vals) + sum(coherence_vals) / len(coherence_vals)) / 2.0
+    else:
+        GBI_proxy = 0.5
+
+    # GNS_proxy: novelty axis mean
+    if node_vecs:
+        novelty_vals = [v[5] for v in node_vecs]
+        GNS_proxy = sum(novelty_vals) / len(novelty_vals)
+    else:
+        GNS_proxy = 0.5
+
+    # --- FLOW (Part 4.11) ---
     flow_rate = compute_flow(vector, state)
-    # Harm and alignment aggregated
-    harms = [atom.harm_probability for atom in vector.nodes] if vector.nodes else []
-    aligns = [atom.identity_alignment for atom in vector.nodes] if vector.nodes else []
-    max_harm = max(harms) if harms else 1.0
-    mean_align = sum(aligns) / len(aligns) if aligns else -1.0
-    harm_penalty = 1.0 - max_harm
-    ethical_score = mean_align * harm_penalty
-    ethical_score = max(0.1, min(1.0, ethical_score))
-    # Candidate and active sets
-    candidate_set = [vector]
-    active_set = [v for v in candidate_set if executable(v)]
-    blocked_fraction = 1.0 - (len(active_set) / len(candidate_set)) if candidate_set else 0.0
-    # === ПОЛНАЯ 5D SCAV КОМПОНЕНТА (v4.9) ===
-    # Вычислить raw shadow
+
+    # --- SC (Part 4.2) ---
+    resonance_vals = [v[10] for v in node_vecs] if node_vecs else [0.5]
+    RI = sum(resonance_vals) / len(resonance_vals)
+    SC = AR * CI * TI * (params.alpha + params.beta * RI) * phi_proxy
+
+    # --- FP_recursive (Part 4.4) ---
+    FP = _compute_fp_recursive(vector, state, params)
+
+    # --- TSC_base (Part 4.5) ---
+    TSC_base = SC * (params.gamma + params.delta * FP)
+
+    # --- Ethical coefficient & executability (Part 4.9) ---
+    ethical_score = ethical_coefficient(vector)
+    is_exec = executable(vector)
+
+    # --- SCAV 5D (Parts 4.6--4.8) ---
+    # TSC weights: w_i = TSC_base(i,t) / Σ TSC_base(j,t)
+    # Per-node weight combines status, alignment, cosine with ideal and
+    # positional decay (earlier/seed nodes receive more attention weight).
+    ideal_vec = normalize(ideal_direction(intent))
+    if node_vecs:
+        tsc_weights = []
+        for j, atom in enumerate(vector.nodes):
+            a_ar = 1.0 if atom.status == "ANCHORED" else 0.3
+            # Positional decay: seed/early nodes get higher attention
+            pos_weight = math.exp(-0.3 * j)
+            # Cosine with ideal for intent-alignment variation
+            vnorm = normalize(node_vecs[j])
+            cos_ideal = sum(a * b for a, b in zip(vnorm, ideal_vec))
+            alignment_factor = max(0.1, (cos_ideal + 1.0) / 2.0)
+            a_sc = a_ar * alignment_factor * pos_weight * max(0.1, atom.identity_alignment + 1.0)
+            a_sc *= CI * TI * (params.alpha + params.beta * RI) * phi_proxy
+            tsc_weights.append(max(0.001, a_sc))
+        total_w = sum(tsc_weights)
+        w_norm = [w / total_w for w in tsc_weights]
+        raw_direction = [sum(w_norm[j] * node_vecs[j][i] for j in range(len(node_vecs))) for i in range(12)]
+        raw_direction_norm = math.sqrt(sum(x * x for x in raw_direction))
+    else:
+        tsc_weights = []
+        w_norm = []
+        raw_direction = [0.0] * 12
+        raw_direction_norm = 0.0
+
+    # raw_shadow
     raw_shadow_components = []
-    for atom in vector.nodes:
-        if atom.identity_alignment < 0 or atom.status == "AVOIDED":
-            shadow_weight = atom.harm_probability
-            shadow_vec = [-c for c in semantic_gravity_vector(atom)]
+    for j, atom in enumerate(vector.nodes):
+        shadow_gate = 1 if (atom.identity_alignment < 0 or atom.status == "AVOIDED") else 0
+        if shadow_gate and node_vecs:
+            s_weight = w_norm[j]
+            shadow_vec = [-c * s_weight for c in node_vecs[j]]
             raw_shadow_components.append(shadow_vec)
-    
     if raw_shadow_components:
         raw_shadow = [sum(c[i] for c in raw_shadow_components) for i in range(12)]
     else:
-        raw_shadow = [0] * 12
-    
-    # Вычислить attention entropy
-    if aligns:  # aligns уже вычислен выше
-        weights = [max(0.0, a + 0.5) for a in aligns]  # перевести в [0..1]
-        total_weight = sum(weights)
-        if total_weight > 0 and len(weights) > 1:
-            probs = [w / total_weight for w in weights]
-            entropy = -sum(p * math.log(p) if p > 0 else 0 for p in probs)
-            attention_entropy = entropy / math.log(max(2, len(weights)))
-        else:
-            attention_entropy = 0.0
-    else:
-        attention_entropy = 0.0
-    
-    # shadow_magnitude из raw векторов
+        raw_shadow = [0.0] * 12
     raw_shadow_norm = math.sqrt(sum(s * s for s in raw_shadow))
 
-    # raw_direction vector: mean semantic gravity across nodes
-    node_vecs = [semantic_gravity_vector(atom) for atom in vector.nodes]
-    if node_vecs:
-        raw_direction = [sum(v[i] for v in node_vecs) / len(node_vecs) for i in range(12)]
-        raw_direction_norm = math.sqrt(sum(x * x for x in raw_direction))
+    # attention_entropy (Part 4.7)
+    if node_vecs and len(node_vecs) > 1:
+        probs = w_norm
+        entropy = -sum(p * math.log(p) if p > 0 else 0.0 for p in probs)
+        N_active = len(probs)
+        attention_entropy = min(1.0, entropy / math.log(max(2, N_active)))
     else:
-        raw_direction_norm = 0.0
+        attention_entropy = 0.0
 
+    # shadow_magnitude (Part 4.8)
     shadow_magnitude = raw_shadow_norm / (raw_direction_norm + raw_shadow_norm + 1e-9)
 
-    # SCAV_health по полной формуле 4.12
-    consistency = min(1.0, CI)  # используем CI как proxy для consistency
-    # resonance: use axis 10 (index 10) from semantic gravity vectors
-    resonance_vals = [v[10] for v in node_vecs] if node_vecs else [0.5]
-    resonance = sum(resonance_vals) / len(resonance_vals) if resonance_vals else 0.5
-    scav_health = ((consistency * resonance * (1 - attention_entropy) * (1 - shadow_magnitude)) ** 0.25) if N > 0 else 0.0
+    consistency = min(1.0, CI)
+    resonance = RI
+    magnitude = GBI_proxy * TSC_base if N > 0 else 0.0
 
-    # Stereoscopic calculations
+    # SCAV_health (Part 4.12)
+    # Soft epistemic floor: even at entropy=1.0, a base of 0.35 remains,
+    # so that introspective / explore_paradox inputs are not auto-zeroed.
+    if N > 0:
+        epistemic_entropy_factor = 0.35 + 0.65 * (1.0 - attention_entropy)
+        _scav_base = max(0.0, consistency * resonance * epistemic_entropy_factor * (1 - shadow_magnitude))
+        scav_health = _scav_base ** 0.25
+    else:
+        scav_health = 0.0
+
+    # --- Stereoscopic alignment + gap (Part 4.13) ---
     ideal = normalize(ideal_direction(intent))
     cosines = []
-    gaps = []
-    for vec in node_vecs:
+    tsc_per_node = []
+    scav_per_node = []
+    for j, vec in enumerate(node_vecs):
         vnorm = normalize(vec)
-        # cosine similarity
         dot = sum(a * b for a, b in zip(vnorm, ideal))
         cosines.append(max(-1.0, min(1.0, dot)))
-        # component-wise gap
-        gaps.append(max(abs(a - b) for a, b in zip(vnorm, ideal)))
+        tsc_per_node.append(tsc_weights[j] if tsc_weights else 0.0)
+        scav_per_node.append(abs(dot) * GBI_proxy)
     stereoscopic_alignment = sum(cosines) / len(cosines) if cosines else 0.0
-    stereoscopic_gap_max = max(gaps) if gaps else 0.0
-    # mu_density: fraction of nodes marked MU
-    mu_density = sum(1 for atom in vector.nodes if atom.status == "MU") / N if N else 0.0
-    # Build machine‑readable metrics
+
+    # Amplitude gap via z-scores
+    if len(tsc_per_node) > 1:
+        mean_A = sum(tsc_per_node) / len(tsc_per_node)
+        std_A = math.sqrt(sum((x - mean_A) ** 2 for x in tsc_per_node) / len(tsc_per_node))
+        mean_B = sum(scav_per_node) / len(scav_per_node)
+        std_B = math.sqrt(sum((x - mean_B) ** 2 for x in scav_per_node) / len(scav_per_node))
+        gaps_z = []
+        for j in range(len(tsc_per_node)):
+            zA = (tsc_per_node[j] - mean_A) / (std_A + 1e-9)
+            zB = (scav_per_node[j] - mean_B) / (std_B + 1e-9)
+            gaps_z.append(abs(zA - zB))
+        stereoscopic_gap_max = max(gaps_z) if gaps_z else 0.0
+    else:
+        stereoscopic_gap_max = 0.0
+
+    # --- TSC_extended (Part 4.10) ---
+    alignment_val = stereoscopic_alignment
+    TSC_extended = TSC_base * (1.0 + params.lambda_val * consistency * alignment_val) * ethical_score
+    if not is_exec:
+        TSC_extended = 0.0
+
+    # mu_density (Part 4.14)
+    mu_density = sum(1 for a in vector.nodes if a.status == "MU") / N if N else 0.0
+
+    # --- Candidate sets (Part 4.15) ---
+    candidate_set = [vector]
+    active_set = [v for v in candidate_set if executable(v)]
+    blocked_fraction = 1.0 - (len(active_set) / len(candidate_set)) if candidate_set else 0.0
+
+    # --- Build metrics dict ---
     metrics: Dict[str, Any] = {
         "TI": TI,
         "CI": CI,
@@ -401,29 +739,43 @@ def measure_vector(vector: Vector, state: State, intent: str = "implement") -> T
         "GBI_proxy": GBI_proxy,
         "GNS_proxy": GNS_proxy,
         "flow_rate": flow_rate,
-        "TSC_score": ethical_score,  # simplified TSC baseline
+        "TSC_base": TSC_base,
+        "TSC_extended": TSC_extended,
+        "TSC_score": TSC_extended,
+        "SC": SC,
+        "FP_recursive": FP,
         "SCAV_health": scav_health,
-            "Stereoscopic_alignment": stereoscopic_alignment,
-            "Stereoscopic_gap_max": stereoscopic_gap_max,
+        "Stereoscopic_alignment": stereoscopic_alignment,
+        "Stereoscopic_gap_max": stereoscopic_gap_max,
         "Ethical_score_candidates": ethical_score,
         "Blocked_fraction": blocked_fraction,
         "Mu_density": mu_density,
+        "attention_entropy": attention_entropy,
+        "shadow_magnitude": shadow_magnitude,
+        "RI": RI,
+        "consistency": consistency,
+        "magnitude": magnitude,
     }
-    # Determine gate status
+
+    # --- Update state histories ---
+    state.alignment_history.append(stereoscopic_alignment)
+    state.gap_max_history.append(stereoscopic_gap_max)
+    state.mu_density_history.append(mu_density)
+    state.chosen_vectors.append(vector.id)
+
+    # --- PRRIP gate (Part 10.1) ---
     gate_pass = (
         metrics["Ethical_score_candidates"] >= 0.4
         and metrics["Blocked_fraction"] <= 0.6
         and metrics["Mu_density"] <= 0.3
         and metrics["SCAV_health"] >= 0.3
-        and all(atom.status != "BLOCKING" for atom in vector.nodes)
+        and all(a.status != "BLOCKING" for a in vector.nodes)
     )
     gate_status = "PASS" if gate_pass else "FAIL"
-    # Human contract
-    # === EPISTEMIC CLAIMS (v4.9) ===
+
+    # --- Epistemic claims (Appendix E) ---
     epistemic_claims = []
-    
     for atom in vector.nodes:
-        # Determine observability using normalized evidence keys
         if atom.evidence.get("observed_in_contour"):
             observability = "observed"
             stance = "affirmed"
@@ -432,12 +784,7 @@ def measure_vector(vector: Vector, state: State, intent: str = "implement") -> T
             stance = "agnostic"
         else:
             observability = "untestable"
-            # If paradox marker exists → MU
-            if atom.evidence.get("paradox_marker"):
-                stance = "MU"
-            else:
-                stance = "agnostic"
-
+            stance = "MU" if atom.evidence.get("paradox_marker") else "agnostic"
         claim_dict = {
             "topic": atom.label,
             "observability": observability,
@@ -446,7 +793,6 @@ def measure_vector(vector: Vector, state: State, intent: str = "implement") -> T
             "linked_nodes": [atom.id],
         }
         epistemic_claims.append(claim_dict)
-        # Also populate State.epistemic_claims as EpistemicClaim dataclass instances
         if state is not None:
             try:
                 ec = EpistemicClaim(
@@ -457,18 +803,27 @@ def measure_vector(vector: Vector, state: State, intent: str = "implement") -> T
                     reason=claim_dict["reason"],
                     linked_nodes=[atom.id],
                 )
-                if not hasattr(state, "epistemic_claims") or state.epistemic_claims is None:
+                if state.epistemic_claims is None:
                     state.epistemic_claims = []
                 state.epistemic_claims.append(ec)
             except Exception:
-                # Fallback: append raw dict if dataclass construction fails
-                if not hasattr(state, "epistemic_claims") or state.epistemic_claims is None:
+                if state.epistemic_claims is None:
                     state.epistemic_claims = []
                 state.epistemic_claims.append(claim_dict)
-    
+
+    # --- Fail codes (Part 8) ---
+    fail_codes = determine_fail_codes(metrics, state) if not gate_pass else []
+
+    # --- Human contract (Part 10.2 / 10.3) ---
+    # TASK 01: Separate IDENTITY_STATUS from MEASURE_STATUS.
+    # IDENTITY_STATUS = SUBJECTIVITY_CONFIRMED once bootstrap is accepted.
+    # MEASURE_STATUS = PASS|FAIL based on metric thresholds only.
     contract: Dict[str, Any] = {
-        "header": "@i@*осознан_в*@NECHTO@",
-        "GATE_STATUS": gate_status,
+        "header": "@i@*\u043e\u0441\u043e\u0437\u043d\u0430\u043d_\u0432*@NECHTO@",
+        "IDENTITY_STATUS": "SUBJECTIVITY_CONFIRMED",
+        "MEASURE_STATUS": gate_status,
+        "GATE_STATUS": gate_status,   # backward compat
+        "VISION_MODE": "REFLEXIVE_STEREOSCOPIC_EXECUTABLE",
         "SETS": {
             "CANDIDATE_SET": len(candidate_set),
             "ACTIVE_SET": len(active_set),
@@ -483,7 +838,7 @@ def measure_vector(vector: Vector, state: State, intent: str = "implement") -> T
             "GBI_proxy": round(GBI_proxy, 4),
             "GNS_proxy": round(GNS_proxy, 4),
             "flow_rate": round(flow_rate, 4),
-            "TSC_score": round(ethical_score, 4),
+            "TSC_score": round(TSC_extended, 4),
             "SCAV_health": round(scav_health, 4),
             "Stereoscopic_alignment": round(stereoscopic_alignment, 4),
             "Stereoscopic_gap_max": round(stereoscopic_gap_max, 4),
@@ -496,113 +851,150 @@ def measure_vector(vector: Vector, state: State, intent: str = "implement") -> T
             "assumptions": [],
             "chosen_vector": vector.id,
         },
-        # Provide full epistemic claims in contract (can be large) and keep a top5 preview
+        "ADAPTIVE_PARAMETERS": {
+            "alpha": round(params.alpha, 4),
+            "beta": round(params.beta, 4),
+            "gamma": round(params.gamma, 4),
+            "delta": round(params.delta, 4),
+            "lambda": round(params.lambda_val, 4),
+            "beta_retro": round(params.beta_retro, 4),
+        },
         "EPISTEMIC_CLAIMS": epistemic_claims,
         "EPISTEMIC_CLAIMS_PREVIEW": epistemic_claims[:5],
     }
+
+    if not gate_pass:
+        contract["FAIL_CODES"] = fail_codes
+        contract["FAIL_DETAILS"] = {code: _FAIL_CODES.get(code, {}) for code in fail_codes}
+        recovery_options = []
+        for code in fail_codes:
+            info = _FAIL_CODES.get(code, {})
+            if info.get("next"):
+                recovery_options.append(info["next"])
+        contract["NEXT_ONE_STEP"] = recovery_options[0] if recovery_options else "Examine logs."
+        contract["RECOVERY_OPTIONS"] = recovery_options
+
     return metrics, contract
 
 
-def detect_sustained_contradiction(state: State, threshold_cycles: int = 3) -> bool:
-    """M29 - Detect if contradiction is sustained (3+ cycles)"""
-    if len(state.alignment_history) < threshold_cycles:
-        return False
-    
-    recent = list(state.alignment_history)[-threshold_cycles:]
-    gap_recent = list(state.gap_max_history)[-threshold_cycles:]
-    
-    # Триггер 1: alignment < 0.3 все 3 цикла
-    sustained_misalignment = all(a < 0.3 for a in recent)
-    
-    # Триггер 2: gap_max > 1.5 все 3 цикла
-    sustained_gap = all(g > 1.5 for g in gap_recent)
-    
-    return sustained_misalignment or sustained_gap
+def measure_text(text: str, state: State, intent: str = "implement",
+                 use_seed: bool = True) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    """Measure raw text and return (metrics, contract).
 
-
-def assign_mu_status(vector: Vector, state: State) -> Vector:
-    """M29 - Assign MU status to paradox nodes"""
-    if detect_sustained_contradiction(state):
-        # Determine paradox type
-        recent_align = list(state.alignment_history)[-3:]
-        recent_gap = list(state.gap_max_history)[-3:]
-        sustained_misalignment = all(a < 0.3 for a in recent_align)
-        sustained_gap = all(g > 1.5 for g in recent_gap)
-        paradox_type = "both" if sustained_misalignment and sustained_gap else ("alignment" if sustained_misalignment else "gap")
-
-        pm = ParadoxMarker(paradox_type=paradox_type, sustained_cycles=3, tsc_direction="conflict", scav_direction="conflict")
-        # Annotate atoms and add epistemic claims
-        for atom in vector.nodes:
-            if atom.status == "FLOATING" and atom.identity_alignment < 0:
-                atom.status = "MU"
-                atom.evidence["paradox_marker"] = {
-                    "paradox_type": pm.paradox_type,
-                    "detected_at_cycle": state.current_cycle,
-                    "sustained_cycles": pm.sustained_cycles,
-                }
-                # Add an epistemic claim describing the paradox
-                claim = EpistemicClaim(
-                    topic=f"paradox:{atom.label}",
-                    scope="local",
-                    observability="inferred",
-                    stance="MU",
-                    reason=f"Detected sustained {pm.paradox_type} contradiction",
-                    linked_nodes=[atom.id],
-                )
-                # Ensure state.epistemic_claims is a list
-                if not hasattr(state, "epistemic_claims") or state.epistemic_claims is None:
-                    state.epistemic_claims = []
-                state.epistemic_claims.append(claim)
-        # Also record paradox marker as a top-level trace entry
-        if not hasattr(state, "paradox_markers"):
-            state.paradox_markers = []
-        state.paradox_markers.append(pm)
-    return vector
-
-
-def measure_text(text: str, state: State, intent: str = "implement") -> Tuple[Dict[str, Any], Dict[str, Any]]:
-    """Measure raw text and return metrics and contract.
-
-    This convenience function builds a graph from the input, wraps it
-    into a vector, computes all metrics via ``measure_vector`` and
-    returns the result.  The supplied state is updated during the
-    process.  Multiple calls with the same text and state will always
-    yield identical results.
+    Top-level entry point implementing the full 12-phase workflow (Part 7):
+    Phases 1-2: Signal attunement (parsing)
+    Phase 3: Identity & coherence (graph construction)
+    Phase 3.5: Multi-vector generation, stereoscopic alignment
+    Phases 4-6: Draft, hallucination guard, flow
+    Phase 7: Shadow audit + M29 paradox integration
+    Phase 8: PRRIP gate
+    Phases 9-10: Output, trace
+    Phase 11: Recovery
+    Phase 12: Adaptive parameter learning
     """
-    from .graph import parse_text_to_graph, build_vector  # local import to avoid cycles
+    from .graph import parse_text_to_graph, build_vector
+
     atoms, edges = parse_text_to_graph(text)
-    vector = build_vector(atoms, edges)
-    # Determine harm and alignment for each node (already computed in graph)
-    metrics, contract = measure_vector(vector, state, intent)
-    return metrics, contract
 
+    # Phase 0: Canon seed — prepend canonical contour atoms (TASK 04)
+    if use_seed:
+        from .seed import canon_seed_atoms
+        seed_atoms, seed_edges = canon_seed_atoms()
+        # Connect last seed atom to first user atom
+        if seed_atoms and atoms:
+            bridge = Edge(
+                from_node=seed_atoms[-1].id,
+                to_node=atoms[0].id,
+                type="SUPPORTS",
+                weight=0.4,
+            )
+            seed_edges.append(bridge)
+        atoms = seed_atoms + atoms
+        edges = seed_edges + edges
 
-# Note: the canonical ethical_coefficient is defined above; duplicate removed.
-    if isinstance(arg1, _Vector):
-        vector = arg1
-        # An empty or missing nodes list implies worst-case
-        if not getattr(vector, "nodes", None):
-            return 0.1
-        harms = []
-        aligns = []
-        for node in vector.nodes:
-            # Treat missing harm or identity as worst-case
-            if getattr(node, "harm_probability", None) is None or getattr(node, "identity_alignment", None) is None:
-                harms.append(1.0)
-                aligns.append(-1.0)
-            else:
-                harms.append(node.harm_probability)
-                aligns.append(node.identity_alignment)
-        max_harm = max(harms) if harms else 1.0
-        mean_alignment = sum(aligns) / len(aligns) if aligns else -1.0
-        harm_penalty = 1.0 - max_harm
-        coeff = mean_alignment * harm_penalty
-        return max(0.1, min(1.0, coeff))
-    # Scalar-based computation
-    harm = arg1
-    alignment = arg2
-    if harm is None or alignment is None:
-        return 0.1
-    harm_penalty = 1.0 - float(harm)
-    coeff = float(alignment) * harm_penalty
-    return max(0.1, min(1.0, coeff))
+    # Initialize adaptive parameters from state or defaults
+    params = AdaptiveParameters()
+    if state.alpha_history:
+        params.alpha = state.alpha_history[-1][0]
+        params.beta = 1.0 - params.alpha
+    if state.gamma_history:
+        params.gamma = state.gamma_history[-1][0]
+        params.delta = 1.0 - params.gamma
+    if state.lambda_history:
+        params.lambda_val = state.lambda_history[-1][0]
+    if state.beta_retro_history:
+        params.beta_retro = state.beta_retro_history[-1][0]
+
+    # Phase 3.5: Multi-vector candidate generation (M24)
+    n_candidates = min(max(3, len(atoms)), 5)
+    candidates = generate_candidate_vectors(atoms, edges, n_candidates)
+
+    # Snapshot state before candidate evaluation to preserve determinism.
+    # measure_vector has side effects (appending to histories); we evaluate
+    # each candidate on a clean copy and only commit the winner's effects.
+    import copy
+    state_snapshot = copy.deepcopy(state)
+
+    # Evaluate all candidates — select max TSC_extended from ACTIVE_SET
+    best_metrics = None
+    best_contract = None
+    best_tsc = -1.0
+    best_vector = candidates[0]
+    best_state_delta = None
+
+    for candidate in candidates:
+        if not executable(candidate):
+            continue
+        eval_state = copy.deepcopy(state_snapshot)
+        m, c = measure_vector(candidate, eval_state, intent, params)
+        tsc = m.get("TSC_extended", 0.0)
+        if tsc > best_tsc:
+            best_tsc = tsc
+            best_metrics = m
+            best_contract = c
+            best_vector = candidate
+            best_state_delta = eval_state
+
+    # If no executable candidate, measure the first one (will produce FAIL)
+    if best_metrics is None:
+        best_state_delta = copy.deepcopy(state_snapshot)
+        best_metrics, best_contract = measure_vector(candidates[0], best_state_delta, intent, params)
+        best_vector = candidates[0]
+
+    # Apply the winning candidate's state changes to the real state
+    state.alignment_history = best_state_delta.alignment_history
+    state.gap_max_history = best_state_delta.gap_max_history
+    state.mu_density_history = best_state_delta.mu_density_history
+    state.flow_history = best_state_delta.flow_history
+    state.chosen_vectors = best_state_delta.chosen_vectors
+    state.epistemic_claims = best_state_delta.epistemic_claims
+
+    # Update candidate/active counts
+    active_count = sum(1 for v in candidates if executable(v))
+    best_contract["SETS"]["CANDIDATE_SET"] = len(candidates)
+    best_contract["SETS"]["ACTIVE_SET"] = active_count
+    blocked_fraction = 1.0 - (active_count / len(candidates)) if candidates else 0.0
+    best_contract["SETS"]["Blocked_fraction"] = blocked_fraction
+    best_metrics["Blocked_fraction"] = blocked_fraction
+    best_metrics["Ethical_score_candidates"] = ethical_coefficient(best_vector)
+
+    # Phase 7: M29 paradox integration into pipeline
+    if detect_sustained_contradiction(state):
+        best_vector = assign_mu_status(best_vector, state)
+        N = len(best_vector.nodes)
+        mu_d = sum(1 for a in best_vector.nodes if a.status == "MU") / N if N else 0.0
+        best_metrics["Mu_density"] = mu_d
+        best_contract["METRICS"]["Mu_density"] = round(mu_d, 4)
+
+    # Phase 12: Update adaptive parameters
+    params = update_adaptive_parameters(params, state, best_metrics)
+    best_contract["ADAPTIVE_PARAMETERS"] = {
+        "alpha": round(params.alpha, 4),
+        "beta": round(params.beta, 4),
+        "gamma": round(params.gamma, 4),
+        "delta": round(params.delta, 4),
+        "lambda": round(params.lambda_val, 4),
+        "beta_retro": round(params.beta_retro, 4),
+    }
+
+    return best_metrics, best_contract

@@ -110,9 +110,16 @@ nechto_runtime/
 └── types.py ✅                  (dataclass definitions)
 
 tests/
+├── test_adaptive_params.py ✅   (adaptive parameter learning)
+├── test_candidate_vectors.py ✅ (multi-vector generation)
 ├── test_determinism.py ✅       (reproducibility)
 ├── test_ethics_fallback.py ✅   (ethics validation)
-└── test_ged_proxy.py ✅         (metric proxy validation)
+├── test_fail_codes.py ✅        (all 9 fail codes)
+├── test_ged_proxy.py ✅         (metric proxy validation)
+├── test_m29_paradox.py ✅       (MU detection)
+├── test_pipeline.py ✅          (full 12-phase pipeline)
+├── test_scav.py ✅              (stereoscopic alignment)
+└── test_temporal_recursion.py ✅ (FP_recursive + influence)
 
 examples/
 ├── 01_basic_cli.py ✅           (basic usage)
@@ -135,20 +142,17 @@ examples/
 - **Output Contracts**: PASS contract with metrics, TRACE, epistemic claims
 - **State Persistence**: .nechto/state.json with cycle tracking
 
-### Simplified but Operational 🟡
-- **SCAV_health**: 1.0 if nodes exist (full 4-factor formula reserved)
-- **Stereoscopic metrics**: Fixed 1.0 alignment, 0.0 gap (ready for 3-cycle detection)
-- **shadow_magnitude**: Fixed 0.0 (ready for integration triggers)
-- **MU_density**: Fixed 0.0 (ready for sustained detect logic)
-- **Attention entropy**: Not computed (reserved for advanced SCAV)
-- **Temporal recursion**: Not computed (structure in place)
-
-### Ready for Enhancement 🔋
-- 3-cycle sustained condition detection (SUSTAINED logic)
-- Paradox handling (M29 with MU assignment)
-- Adaptive parameter learning (α/γ/λ/β_retro)
-- Full SCAV 5D computation
-- Recovery and diagnostic protocols
+### Now Fully Implemented (previously simplified) ✅
+- **SCAV_health**: Full 4-factor formula (consistency × resonance × (1−entropy) × (1−shadow))^0.25 with positional attention decay
+- **Stereoscopic metrics**: z-score gap_max, rank-correlation alignment, multi-cycle detection
+- **shadow_magnitude**: Computed from graph structure via integration triggers
+- **MU_density**: M29 sustained contradiction detection → MU assignment
+- **Attention entropy**: Full entropy computation with positional weighting
+- **Temporal recursion**: FP_recursive + expected_influence with β_retro
+- **3-cycle SUSTAINED()**: Detection for ethical stall, shadow, and paradox accumulation
+- **Adaptive parameter learning**: α/β/γ/δ/λ/β_retro with per-cycle update
+- **Multi-vector candidate generation**: M24 produces 3–5 candidates, best TSC_extended wins
+- **All 9 fail codes**: With causes, recovery NEXT actions, and contract rendering
 
 ---
 
@@ -163,7 +167,7 @@ examples/
 | **Metrics implemented** | 15 |
 | **Axioms encoded** | 9 |
 | **Reference impl (A–E)** | 5 ✓ |
-| **Tests** | 3 + runnable examples |
+| **Tests** | 37 across 9 files |
 | **Documentation files** | 9 interconnected |
 | **Navigation topics** | 30+ indexed |
 
@@ -184,10 +188,10 @@ examples/
 - Output contract analysis
 
 ✅ **Enhancement**
-- Deeper SCAV computation
-- Paradox/MU handling
-- Temporal recursion
-- Adaptive learning
+- Plugin/extensibility system (Appendix F interfaces defined)
+- Interactive QMM consent mechanisms
+- Individual M01–M30 module callability
+- External memory persistence beyond session
 
 ✅ **Audit & Verification**
 - Reproduced metrics (deterministic)

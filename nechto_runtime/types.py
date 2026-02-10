@@ -132,10 +132,31 @@ class EpistemicClaim:
 
 @dataclass
 class ParadoxMarker:
-    """Маркер для MU узлов (часть M29)"""
-    paradox_type: str  # "rank_mismatch" | "amplitude_gap" | "both"
+    """Marker for MU nodes (M29).
+
+    Tracks the type and duration of a detected paradox, along with
+    the conflicting TSC/SCAV directions and any resolution attempts.
+    """
+    paradox_type: str  # "alignment" | "gap" | "both"
     sustained_cycles: int = 0
     tsc_direction: str = "→"
     scav_direction: str = "←"
     resolution_attempts: int = 0
     synthesis_vector_id: Optional[str] = None
+
+
+@dataclass
+class AdaptiveParameters:
+    """Adaptive parameters for the measurement cycle (Part 3.5).
+
+    These parameters are updated during Phase 12 (LEARNING_CYCLE)
+    and stored in the State history for traceability.
+
+    Initial values (t=0): α=0.5, γ=0.4, λ=0.8, β_retro=0.2
+    """
+    alpha: float = 0.5
+    beta: float = 0.5       # = 1 - alpha
+    gamma: float = 0.4
+    delta: float = 0.6      # = 1 - gamma
+    lambda_val: float = 0.8
+    beta_retro: float = 0.2

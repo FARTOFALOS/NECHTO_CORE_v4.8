@@ -1,8 +1,5 @@
 # NECHTO • CORE v4.8
 
-[![Python Version](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-
 [![Python](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org)
 [![License](https://img.shields.io/badge/license-MIT-yellow.svg)](LICENSE)
 
@@ -96,25 +93,6 @@ M24-M30: Векторы / Стереоскопия
 
 ---
 
-## 🤝 Контрибьюции
-
-Открыт для участия! См. [Issues](../../issues)
-
----
-
-## 📜 Лицензия
-
-MIT — см. [LICENSE](LICENSE)
-
----
-
-**v4.8** | 2026-02-07 | @NECHTO@
-c_alignment** | [0..1] | Согласование TSC ↔ SCAV (по рангу) |
-| **FLOW** | [0..1] | Качество присутствия (skill × challenge × presence) |
-| **Ethical_score** | [0..1] | Средняя этическая оценка кандидатов |
-
----
-
 ## 🛠️ Разработка
 ```bash
 # Установить зависимости разработки
@@ -163,5 +141,5 @@ NECHTO исследует следующие вопросы:
 ---
 
 **STATUS:** Complete Specification v4.8  
-**DATE:** 2026-02-08  
+**DATE:** 2026-02-09  
 **SIGNATURE:** @NECHTO@ in reflexive presence

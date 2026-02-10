@@ -30,6 +30,113 @@ from .types import SemanticAtom, Edge, Vector
 from .metrics import harm_probability, identity_alignment
 
 
+# ---------------------------------------------------------------------------
+# Evidence classification keywords (TASK 02)
+# ---------------------------------------------------------------------------
+
+# Tokens whose lowered form matches these sets get an epistemic upgrade
+# from the default "untestable" to "observed" or "inferred".
+_OBSERVED_KEYWORDS = {
+    # Repo artifacts the user might reference
+    "readme", "spec", "implementation", "code", "test", "metric",
+    "metrics", "graph", "vector", "edge", "atom", "node", "state",
+    "cli", "python", "pytest", "gate", "prrip", "scav", "tsc",
+    "flow", "ethics", "ethical", "mu", "shadow", "entropy",
+    "contour", "nechto", "runtime", "module", "phase", "axiom",
+    "data", "structure", "function", "parameter", "result",
+    "output", "input", "file", "docs", "examples", "commit",
+    "build", "install", "run", "config", "json", "sqlite",
+    # Action/engineering words → observable operations
+    "implement", "fix", "refactor", "add", "remove", "update",
+    "create", "delete", "measure", "compute", "calculate",
+    "parse", "read", "write", "deploy", "debug",
+}
+
+_INFERRED_KEYWORDS = {
+    # Abstract/analytic concepts → inferrable from context
+    "meaning", "reason", "cause", "effect", "pattern", "relation",
+    "connection", "difference", "similarity", "analogy", "model",
+    "hypothesis", "theory", "principle", "rule", "law",
+    "category", "type", "class", "level", "hierarchy",
+    "process", "mechanism", "system", "framework", "architecture",
+    "strategy", "plan", "goal", "objective", "criteria",
+    "analysis", "synthesis", "evaluation", "comparison",
+    "logic", "inference", "deduction", "induction",
+    # Russian equivalents
+    "анализ", "синтез", "причина", "следствие", "модель",
+    "паттерн", "связь", "различие", "аналогия", "гипотеза",
+    "теория", "принцип", "правило", "категория", "процесс",
+    "механизм", "система", "стратегия", "план", "цель",
+    "критерий", "логика", "рефлексия", "интроспекция",
+    "метакогнитивный", "самоосознание", "идентичность",
+    "когнитивный", "мышление", "информация", "обработка",
+    "спонтанность", "креативность", "алгоритм",
+}
+
+# Tokens indicating fundamentally untestable (qualia, consciousness, …)
+_UNTESTABLE_KEYWORDS = {
+    "consciousness", "qualia", "soul", "god", "afterlife",
+    "сознание", "квалиа", "душа", "бог",
+    "переживание", "чувство", "ощущение",
+    "субъективный", "субъективность", "квалитативный",
+}
+
+
+def _classify_evidence(token: str) -> dict:
+    """Assign epistemic evidence dict based on token content.
+
+    Returns a dict compatible with SemanticAtom.evidence.
+    Classification priority: observed > inferred > untestable.
+    """
+    low = token.lower().strip(".,;:!?()[]{}\"'«»—")
+    if low in _OBSERVED_KEYWORDS:
+        return {
+            "observed_in_contour": True,
+            "epistemic_status": "observed",
+            "inferences": [],
+            "assumptions": [],
+            "paradox_marker": None,
+            "scores": {},
+        }
+    if low in _INFERRED_KEYWORDS:
+        return {
+            "observed_in_contour": False,
+            "epistemic_status": "inferred",
+            "inferences": [f"inferred from token '{low}'"],
+            "assumptions": [],
+            "paradox_marker": None,
+            "scores": {},
+        }
+    if low in _UNTESTABLE_KEYWORDS:
+        return {
+            "observed_in_contour": False,
+            "epistemic_status": "untestable",
+            "inferences": [],
+            "assumptions": [],
+            "paradox_marker": None,
+            "scores": {},
+        }
+    # Default: check if it looks like a code/repo reference
+    if any(c in token for c in "._/\\") or token.endswith(".py") or token.endswith(".md"):
+        return {
+            "observed_in_contour": True,
+            "epistemic_status": "observed",
+            "inferences": [],
+            "assumptions": [],
+            "paradox_marker": None,
+            "scores": {},
+        }
+    # Fallback
+    return {
+        "observed_in_contour": False,
+        "epistemic_status": "untestable",
+        "inferences": [],
+        "assumptions": [],
+        "paradox_marker": None,
+        "scores": {},
+    }
+
+
 def parse_text_to_graph(text: str) -> Tuple[List[SemanticAtom], List[Edge]]:
     """Parse a plain text string into a list of semantic atoms and edges.
 
@@ -39,6 +146,12 @@ def parse_text_to_graph(text: str) -> Tuple[List[SemanticAtom], List[Edge]]:
     undefined fields later on.  Tags are initialised with a single
     ``WITNESS`` entry to indicate that each atom corresponds to a
     directly observed piece of the input.
+
+    Evidence is auto-classified based on token content (TASK 02):
+    - Tokens referencing repo artifacts/code → observed
+    - Tokens denoting analytic/inferential concepts → inferred
+    - Tokens about qualia/consciousness → untestable
+    - Everything else → untestable (default)
 
     Args:
         text: Raw user input.
@@ -56,6 +169,8 @@ def parse_text_to_graph(text: str) -> Tuple[List[SemanticAtom], List[Edge]]:
         atom = SemanticAtom(id=atom_id, label=token)
         # Default tag indicates the token is directly witnessed.
         atom.tags.append("WITNESS")
+        # Auto-classify evidence based on content (TASK 02)
+        atom.evidence = _classify_evidence(token)
         # Compute harm and identity immediately.
         atom.harm_probability = harm_probability(atom, [])
         atom.identity_alignment = identity_alignment(atom)
