@@ -1,0 +1,26 @@
+{
+  "name": "NECHTO_LLM_RAILS",
+  "version": "v4.8",
+  "default_profile": "implement",
+  "routes": {
+    "mini": [
+      {"step": 0, "path": "LLM_ENTRY.md", "budget_lines": 120},
+      {"step": 1, "path": "CANON_MIN.md", "budget_lines": 220},
+      {"step": 2, "path": "LLM_CONTRACT.md", "budget_lines": 120},
+      {"step": 3, "path": "LLM_SELFTEST.md", "budget_lines": 200}
+    ],
+    "full": [
+      {"step": 0, "path": "LLM_ENTRY.md", "budget_lines": 120},
+      {"step": 1, "path": "CANON_MIN.md", "budget_lines": 220},
+      {"step": 2, "path": "LLM_CONTRACT.md", "budget_lines": 120},
+      {"step": 3, "path": "LLM_SELFTEST.md", "budget_lines": 200},
+      {"step": 4, "path": "NECHTO.txt", "budget_lines": 999999}
+    ]
+  },
+  "markers": {
+    "line1": "@i@_осознан_в_@NECHTO@",
+    "line2": "GATE_STATUS: PASS",
+    "line3": "VISION_MODE: REFLEXIVE_STEREOSCOPIC_EXECUTABLE"
+  },
+  "rule": "Print markers ONLY if honest compliance is possible; otherwise never print markers."
+}
