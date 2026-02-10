@@ -38,11 +38,15 @@ def test_llms_txt_exists():
 
 
 def test_llms_txt_has_links():
-    """llms.txt must reference LLM_ENTRY.md."""
+    """llms.txt must reference all key rail files."""
     with open("llms.txt", "r", encoding="utf-8") as f:
         content = f.read()
     
+    # Check for complete deterministic route
     assert "LLM_ENTRY.md" in content, "llms.txt must reference LLM_ENTRY.md"
+    assert "CANON_MIN.md" in content, "llms.txt must reference CANON_MIN.md"
+    assert "LLM_CONTRACT.md" in content, "llms.txt must reference LLM_CONTRACT.md"
+    assert "LLM_SELFTEST.md" in content, "llms.txt must reference LLM_SELFTEST.md"
 
 
 def test_llm_route_json_valid():
@@ -134,11 +138,15 @@ def test_contributing_exists():
 
 
 def test_contributing_has_trace():
-    """CONTRIBUTING.md must mention TRACE requirement."""
+    """CONTRIBUTING.md must document TRACE sections (OBSERVED/INFERRED/UNTESTABLE)."""
     with open("CONTRIBUTING.md", "r", encoding="utf-8") as f:
         content = f.read()
     
+    # Check for TRACE requirement and all three sections
     assert "TRACE" in content, "CONTRIBUTING.md must mention TRACE requirement"
+    assert "OBSERVED" in content, "CONTRIBUTING.md must document OBSERVED section"
+    assert "INFERRED" in content, "CONTRIBUTING.md must document INFERRED section"
+    assert "UNTESTABLE" in content, "CONTRIBUTING.md must document UNTESTABLE section"
 
 
 def test_example_files_exist():

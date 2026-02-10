@@ -6,6 +6,7 @@ Demonstrates: MU-Logic (Axiom 7)
 - Not all contradictions require forced resolution
 - System can hold paradoxical states using NodeStatus.MU
 - Prevents false clarity when honest answer is "unknowable"
+- MU (from Zen Buddhism): "unask the question" / "neither yes nor no" / "42"
 
 Scenario: User asks "Does NECHTO have consciousness?"
   - Cannot be observed directly

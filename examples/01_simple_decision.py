@@ -42,7 +42,7 @@ def main() -> None:
         coherence=0.8,         # Well-structured
         agency=0.7,            # Strong agency
         novelty=0.6,
-        harm_probability=0.8,        # HIGH HARM (ethical violation)
+        harm_probability=0.8,  # HIGH harm probability (0.0=safe, 1.0=harmful)
         tags=[Tag.INTENT],
     ))
 
@@ -56,7 +56,7 @@ def main() -> None:
         boundary=1.0,          # Strong boundary
         coherence=0.7,
         practicality=0.5,      # Less actionable (just says no)
-        harm_probability=0.0,        # NO HARM (ethical)
+        harm_probability=0.0,  # NO harm (ethical)
         tags=[Tag.WITNESS, Tag.EMOTION],
     ))
 

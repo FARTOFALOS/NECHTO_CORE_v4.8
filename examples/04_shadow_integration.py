@@ -34,6 +34,10 @@ def main() -> None:
     engine = NechtoEngine()
 
     # ── Build semantic graph with shadow ───────────────────────
+    # Note: shadow = what attention avoids
+    #   Low shadow (0.1) = actively attended to
+    #   High shadow (0.8) = avoided by attention
+    
     # Primary focus: Rational decision (low shadow)
     engine.add_atom(SemanticAtom(
         label="rational-analysis",
@@ -43,7 +47,7 @@ def main() -> None:
         practicality=0.9,
         coherence=0.9,
         agency=0.7,
-        shadow=0.1,            # Low shadow (attended to)
+        shadow=0.1,            # Low shadow = actively attended
         tags=[Tag.INTENT],
     ))
 
@@ -56,7 +60,7 @@ def main() -> None:
         empathy=0.8,
         resonance=0.7,
         uncertainty=0.7,
-        shadow=0.8,                   # HIGH SHADOW (attention avoids)
+        shadow=0.8,                   # HIGH shadow = attention avoids this
         tags=[Tag.EMOTION],
     ))
 
