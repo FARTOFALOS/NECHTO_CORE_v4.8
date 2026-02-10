@@ -1,6 +1,6 @@
 from collections import deque
-from math import sqrt, exp, log
-from typing import Dict, List, Tuple, Set
+from math import sqrt, exp
+from typing import Dict, List
 
 
 def clamp(x, a, b):
@@ -128,7 +128,14 @@ def required_skill(n_nodes: int, n_edges: int) -> float:
     return difficulty(n_nodes, n_edges)
 
 
-def flow_score(n_nodes: int, n_edges: int, current_skill: float = 0.6, witnesses: int = 1, emotions: int = 0, intents: int = 0) -> float:
+def flow_score(
+    n_nodes: int,
+    n_edges: int,
+    current_skill: float = 0.6,
+    witnesses: int = 1,
+    emotions: int = 0,
+    intents: int = 0,
+) -> float:
     req_skill = required_skill(n_nodes, n_edges)
     max_skill = 1.0
     skill_match = 1 - abs(req_skill - current_skill) / max_skill

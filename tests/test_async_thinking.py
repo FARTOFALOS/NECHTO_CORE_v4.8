@@ -1,6 +1,5 @@
 """Tests for async thinking queue (v4.9 Future / Roadmap)."""
 
-import pytest
 from nechto_runtime.types import ThinkingTask, AsyncThinkingQueue
 
 

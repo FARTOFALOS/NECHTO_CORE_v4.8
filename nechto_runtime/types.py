@@ -110,6 +110,7 @@ class State:
     fail_history: List[Any] = field(default_factory=list)
     protocol_deviations: List[Dict[str, Any]] = field(default_factory=list)
     meta_sensor_history: List[Dict[str, Any]] = field(default_factory=list)
+    paradox_markers: List["ParadoxMarker"] = field(default_factory=list)
     shadow_nodes_history: deque = field(default_factory=lambda: deque(maxlen=5))
     current_cycle: int = 0
 

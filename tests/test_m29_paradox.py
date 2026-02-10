@@ -1,5 +1,4 @@
-import pytest
-from nechto_runtime.types import SemanticAtom, Edge, Vector, State
+from nechto_runtime.types import SemanticAtom, Vector, State
 from nechto_runtime.metrics import assign_mu_status, detect_sustained_contradiction
 
 

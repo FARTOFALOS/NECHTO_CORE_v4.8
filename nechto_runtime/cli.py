@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import sys
 from pathlib import Path
 from typing import Dict, Any
@@ -170,7 +169,11 @@ def write_outputs(contract: Dict[str, Any], metrics: Dict[str, Any]) -> None:
     if contract.get("EPISTEMIC_CLAIMS"):
         for claim in contract["EPISTEMIC_CLAIMS"]:
             if isinstance(claim, dict):
-                lines.append(f"  - {claim.get('topic', '?')} | {claim.get('observability', '?')} | {claim.get('stance', '?')} | {claim.get('reason', '')}")
+                topic = claim.get('topic', '?')
+                observability = claim.get('observability', '?')
+                stance = claim.get('stance', '?')
+                reason = claim.get('reason', '')
+                lines.append(f"  - {topic} | {observability} | {stance} | {reason}")
             else:
                 lines.append(f"  - {claim}")
     else:
@@ -225,9 +228,12 @@ def cmd_measure(args: argparse.Namespace) -> None:
 
     write_outputs(contract, metrics)
     save_state(state, use_sqlite=use_sqlite)
-    print(f"Measurement complete (cycle {state.current_cycle}). "
-          f"Gate: {contract['GATE_STATUS']}. "
-          f"Contract: {CONTRACT_FILE}, metrics: {METRICS_FILE}.")
+    msg = (
+        f"Measurement complete (cycle {state.current_cycle}). "
+        f"Gate: {contract['GATE_STATUS']}. "
+        f"Contract: {CONTRACT_FILE}, metrics: {METRICS_FILE}."
+    )
+    print(msg)
 
 
 def main(argv: list[str] | None = None) -> None:

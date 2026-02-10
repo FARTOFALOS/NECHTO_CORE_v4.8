@@ -5,6 +5,7 @@ import sqlite3
 import json
 from typing import Any, Optional
 
+
 class SQLiteStore:
     def __init__(self, db_path: str = 'nechto_state.db'):
         self.db_path = db_path

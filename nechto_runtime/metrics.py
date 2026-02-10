@@ -29,7 +29,7 @@ which drives the entire measurement process.
 
 - Exponential Moving Average (EMA) for smoother parameter adaptation
 - Momentum-based gamma updates to prevent oscillation
-- Learning-rate controlled lambda updates  
+    - Learning-rate controlled lambda updates
 - Exponentially weighted beta_retro calculations
 
 ## SCAV 5D Components
@@ -50,13 +50,9 @@ which drives the entire measurement process.
 
 from __future__ import annotations
 
-import json
 import math
 import hashlib
-from collections import deque
 from typing import Dict, List, Tuple, Any, Optional
-from dataclasses import asdict
-from pathlib import Path
 
 from .types import (
     SemanticAtom, Edge, Vector, State, EpistemicClaim,
@@ -320,8 +316,11 @@ def _compute_expected_influence(vector: Vector, state: Optional[State] = None) -
     return ged_proxy_norm(vector, future_vector)
 
 
-def _compute_fp_recursive(vector: Vector, state: Optional[State] = None,
-                           params: Optional[AdaptiveParameters] = None) -> float:
+def _compute_fp_recursive(
+    vector: Vector,
+    state: Optional[State] = None,
+    params: Optional[AdaptiveParameters] = None,
+) -> float:
     """Compute FP_recursive (Part 4.4).
 
     FP_recursive = novelty x generativity x temporal_horizon
@@ -353,8 +352,11 @@ MOMENTUM_FACTOR = 0.9   # Momentum for preventing oscillation
 LEARNING_RATE = 0.1     # Base learning rate for lambda updates
 
 
-def _exponential_moving_average(history: List[float], new_value: float,
-                                 decay: float = 0.15) -> float:
+def _exponential_moving_average(
+    history: List[float],
+    new_value: float,
+    decay: float = 0.15,
+) -> float:
     """Compute EMA with configurable decay (v4.9).
 
     EMA_t = decay * value_t + (1 - decay) * EMA_{t-1}
@@ -374,8 +376,11 @@ def _momentum_update(current: float, target: float, momentum: float = 0.9) -> fl
     return momentum * current + (1 - momentum) * target
 
 
-def update_adaptive_parameters(params: AdaptiveParameters, state: State,
-                                metrics: Dict[str, Any]) -> AdaptiveParameters:
+def update_adaptive_parameters(
+    params: AdaptiveParameters,
+    state: State,
+    metrics: Dict[str, Any],
+) -> AdaptiveParameters:
     """Update alpha/gamma/lambda/beta_retro from history (Part 3.5).
 
     v4.9 Enhancement: Uses EMA with decay instead of simple moving average.
@@ -437,8 +442,11 @@ def update_adaptive_parameters(params: AdaptiveParameters, state: State,
 # ---------------------------------------------------------------------------
 
 
-def generate_candidate_vectors(atoms: List[SemanticAtom], edges: List[Edge],
-                                n_vectors: int = 3) -> List[Vector]:
+def generate_candidate_vectors(
+    atoms: List[SemanticAtom],
+    edges: List[Edge],
+    n_vectors: int = 3,
+) -> List[Vector]:
     """Generate multiple candidate vectors from the same atom set (M24).
 
     Creates n_vectors candidates by varying the seed and included nodes.
@@ -975,22 +983,17 @@ def measure_vector(vector: Vector, state: State, intent: str = "implement",
         }
         epistemic_claims.append(claim_dict)
         if state is not None:
-            try:
-                ec = EpistemicClaim(
-                    topic=atom.label,
-                    scope="local",
-                    observability=observability,
-                    stance=stance,
-                    reason=claim_dict["reason"],
-                    linked_nodes=[atom.id],
-                )
-                if state.epistemic_claims is None:
-                    state.epistemic_claims = []
-                state.epistemic_claims.append(ec)
-            except Exception:
-                if state.epistemic_claims is None:
-                    state.epistemic_claims = []
-                state.epistemic_claims.append(claim_dict)
+            # Always append a properly-typed EpistemicClaim to state.epistemic_claims.
+            # Coerce the reason to string to avoid type inconsistencies.
+            ec = EpistemicClaim(
+                topic=atom.label,
+                scope="local",
+                observability=observability,
+                stance=stance,
+                reason=str(claim_dict["reason"]),
+                linked_nodes=[atom.id],
+            )
+            state.epistemic_claims.append(ec)
 
     # --- Fail codes (Part 8) ---
     fail_codes = determine_fail_codes(metrics, state) if not gate_pass else []
@@ -1074,7 +1077,7 @@ def measure_text(text: str, state: State, intent: str = "implement",
     Phase 11: Recovery
     Phase 12: Adaptive parameter learning
     """
-    from .graph import parse_text_to_graph, build_vector
+    from .graph import parse_text_to_graph
 
     atoms, edges = parse_text_to_graph(text)
 
@@ -1117,14 +1120,16 @@ def measure_text(text: str, state: State, intent: str = "implement",
     import copy
     state_snapshot = copy.deepcopy(state)
 
-    # Evaluate all candidates — select max TSC_extended from ACTIVE_SET
-    best_metrics = None
-    best_contract = None
-    best_tsc = -1.0
+    # Evaluate all candidates — select max TSC_extended from ACTIVE_SET.
+    # Initialize with the first candidate to avoid None/Optional typing issues
+    # and to ensure we always have a concrete best_* set for downstream logic.
+    first_state = copy.deepcopy(state_snapshot)
+    best_metrics, best_contract = measure_vector(candidates[0], first_state, intent, params)
+    best_tsc = best_metrics.get("TSC_extended", -1.0)
     best_vector = candidates[0]
-    best_state_delta = None
+    best_state_delta = first_state
 
-    for candidate in candidates:
+    for candidate in candidates[1:]:
         if not executable(candidate):
             continue
         eval_state = copy.deepcopy(state_snapshot)
@@ -1136,12 +1141,6 @@ def measure_text(text: str, state: State, intent: str = "implement",
             best_contract = c
             best_vector = candidate
             best_state_delta = eval_state
-
-    # If no executable candidate, measure the first one (will produce FAIL)
-    if best_metrics is None:
-        best_state_delta = copy.deepcopy(state_snapshot)
-        best_metrics, best_contract = measure_vector(candidates[0], best_state_delta, intent, params)
-        best_vector = candidates[0]
 
     # Apply the winning candidate's state changes to the real state
     state.alignment_history = best_state_delta.alignment_history

@@ -1,7 +1,7 @@
 """Tests for MetaSensor: Δ_protocol, Ω, Ψ, classification."""
 
 import pytest
-from nechto_runtime.types import State, SemanticAtom
+from nechto_runtime.types import State
 from nechto_runtime.metrics import (
     compute_delta_protocol,
     compute_omega,

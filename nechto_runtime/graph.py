@@ -200,6 +200,7 @@ def build_vector(atoms: List[SemanticAtom], edges: List[Edge]) -> Vector:
     seed = [atoms[0].id] if atoms else []
     return Vector(id="V0", seed_nodes=seed, nodes=atoms, edges=edges)
 
+
 def parse_graph(text: str) -> Vector:
     """Parse text into a ``Vector`` suitable for GED comparisons.
 

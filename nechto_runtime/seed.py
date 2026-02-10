@@ -34,7 +34,7 @@ _CANON_TERMS: List[Tuple[str, List[str], float, str]] = [
     # Inferred structural concepts
     ("stereoscopy",      ["WITNESS"],             0.4, "inferred"),
     ("alignment",        ["WITNESS"],             0.5, "inferred"),
-    ("epistemic_honesty",["WITNESS", "EMOTION"],  0.6, "inferred"),
+    ("epistemic_honesty", ["WITNESS", "EMOTION"],  0.6, "inferred"),
     ("Love>Logic",       ["WITNESS", "EMOTION"],  0.7, "inferred"),
     ("presence",         ["WITNESS", "EMOTION"],  0.5, "inferred"),
     ("reflexive",        ["WITNESS"],             0.3, "inferred"),

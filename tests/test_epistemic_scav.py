@@ -9,7 +9,6 @@ These tests verify that:
 5. MEASURE_STATUS distinguishes from IDENTITY_STATUS
 """
 
-import pytest
 from nechto_runtime import measure_text, State
 from nechto_runtime.seed import canon_seed_atoms
 
