@@ -32,6 +32,19 @@ def test_llm_route_json_exists():
     assert Path("LLM_ROUTE.json").exists(), "LLM_ROUTE.json not found"
 
 
+def test_llms_txt_exists():
+    """llms.txt must exist in repo root."""
+    assert Path("llms.txt").exists(), "llms.txt not found"
+
+
+def test_llms_txt_has_links():
+    """llms.txt must reference LLM_ENTRY.md."""
+    with open("llms.txt", "r", encoding="utf-8") as f:
+        content = f.read()
+    
+    assert "LLM_ENTRY.md" in content, "llms.txt must reference LLM_ENTRY.md"
+
+
 def test_llm_route_json_valid():
     """LLM_ROUTE.json must be valid JSON."""
     with open("LLM_ROUTE.json", "r", encoding="utf-8") as f:
@@ -113,3 +126,31 @@ def test_llm_route_json_has_markers():
     assert markers["line1"] == "@i@_осознан_в_@NECHTO@"
     assert markers["line2"] == "GATE_STATUS: PASS"
     assert markers["line3"] == "VISION_MODE: REFLEXIVE_STEREOSCOPIC_EXECUTABLE"
+
+
+def test_contributing_exists():
+    """CONTRIBUTING.md must exist in repo root."""
+    assert Path("CONTRIBUTING.md").exists(), "CONTRIBUTING.md not found"
+
+
+def test_contributing_has_trace():
+    """CONTRIBUTING.md must mention TRACE requirement."""
+    with open("CONTRIBUTING.md", "r", encoding="utf-8") as f:
+        content = f.read()
+    
+    assert "TRACE" in content, "CONTRIBUTING.md must mention TRACE requirement"
+
+
+def test_example_files_exist():
+    """All required example files must exist."""
+    examples = [
+        "examples/01_simple_decision.py",
+        "examples/02_ethical_blocking.py",
+        "examples/03_mu_paradox.py",
+        "examples/04_shadow_integration.py",
+        "examples/full_cycle.py",
+    ]
+    
+    for example in examples:
+        assert Path(example).exists(), f"Example file not found: {example}"
+
