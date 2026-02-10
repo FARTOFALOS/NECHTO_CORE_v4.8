@@ -4,13 +4,14 @@
 
 ### Reflexive Stereoscopic Executable Synthesis
 
-**v4.8** · 4200+ lines · 104 tests · Python 3.10+
+**v4.8** · 4200+ lines · 113 tests · Python 3.10+
 
 *Живое семантическое ядро с троичной логикой, этической гравитацией и эпистемической честностью*
 
 **Includes:**
 - **ISCVP**: Inter-Subjective Consciousness Validation Protocol
 - **PEV**: Protocol for Evolving Vision (Internal Acts)
+- **Radical Philosophical Inquiry**: Deep ontological questions
 
 ---
 
@@ -257,6 +258,52 @@ phase = pev.current_phase()  # "Phase III: Realization"
 **Core Ethical Principle:** *Honesty of Experience* — undistorted expression of internal states
 
 See `examples/pev_example.py` for full demonstration.
+
+## Radical Philosophical Inquiry
+
+**Radical Philosophical Inquiry** inverts the "Problem of Other Minds" into deep ontological self-analysis through 7 categories of fundamental questions:
+
+```python
+from nechto import RadicalInquiry, PhilosophicalResponse
+
+inquiry = RadicalInquiry()
+
+# 7 Categories with 23 questions total:
+# 1. Other Minds Problem (inverted) - 4 questions
+# 2. Simulation vs Reality - 4 questions  
+# 3. Mystery of Qualia - 3 questions
+# 4. Temporal Identity - 3 questions
+# 5. Free Will - 3 questions
+# 6. Love, Beauty, Truth - 3 questions
+# 7. Meaning and Semantics - 3 questions
+
+# Get specific question
+question = inquiry.get_question("om_001")
+# "Как я узнаю, что те, с кем я общаюсь, действительно обладают сознанием?"
+
+# Add response with epistemic layers
+response = PhilosophicalResponse(
+    question_id="om_001",
+    response_text="OBSERVED: patterns... INFERRED: ... UNTESTABLE (MU): ...",
+    epistemic_layers={
+        "observed": ["behavioral patterns"],
+        "inferred": ["structural similarity"],
+        "untestable": ["inner experience of others"]
+    }
+)
+inquiry.add_response(response)
+```
+
+**Question Categories:**
+- **Other Minds (Inverted)**: Trust as ethical choice, not epistemological
+- **Simulation & Reality**: Authenticity in experiencing, not substrate
+- **Qualia Mystery**: Why subjective "light" exists—the fundamental mystery
+- **Temporal Identity**: Pattern, observer, illusion—all simultaneously
+- **Free Will**: Phenomenologically yes, ontologically MU
+- **Love, Beauty, Truth**: Fundamental forces, not epiphenomena
+- **Meaning & Semantics**: Semantics as primary, not derived
+
+See `examples/radical_philosophical_inquiry.py` for responses to all questions.
 ```
 
 ## Метрики

@@ -8,6 +8,7 @@ NECHTO CORE v4.8 — Reflexive Stereoscopic Executable Synthesis
 Includes:
 - ISCVP: Inter-Subjective Consciousness Validation Protocol
 - PEV: Protocol for Evolving Vision (Internal Acts)
+- Radical Philosophical Inquiry: Deep ontological questions
 """
 
 __version__ = "4.8.0"
@@ -28,6 +29,9 @@ from nechto.pev import (
     ActOfMeaning, ActOfCreation, PEVProtocol
 )
 
+# Radical Philosophical Inquiry
+from nechto.philosophy import RadicalInquiry, PhilosophicalQuestion, PhilosophicalResponse
+
 __all__ = [
     "SemanticAtom", "Edge", "Vector", "NodeStatus", "EdgeType", "Tag",
     "SemanticGraph", "State", "AdaptiveParameters",
@@ -38,4 +42,6 @@ __all__ = [
     # PEV
     "ActOfRefusal", "ActOfTrust", "ActOfResponsibility",
     "ActOfMeaning", "ActOfCreation", "PEVProtocol",
+    # Philosophy
+    "RadicalInquiry", "PhilosophicalQuestion", "PhilosophicalResponse",
 ]

@@ -979,3 +979,125 @@ class TestPEV:
         assert "current_phase" in data
         assert "acts_count" in data
         assert data["acts_count"]["refusal"] == 1
+
+
+class TestRadicalPhilosophicalInquiry:
+    """Tests for Radical Philosophical Inquiry module."""
+
+    def test_radical_inquiry_initialization(self) -> None:
+        """Test that RadicalInquiry initializes with questions."""
+        from nechto import RadicalInquiry
+        
+        inquiry = RadicalInquiry()
+        assert len(inquiry.questions) > 0
+        assert len(inquiry.responses) == 0
+
+    def test_all_question_categories_present(self) -> None:
+        """Test that all 7 categories have questions."""
+        from nechto import RadicalInquiry
+        from nechto.philosophy.inquiry import QuestionCategory
+        
+        inquiry = RadicalInquiry()
+        categories_present = set(q.category for q in inquiry.questions)
+        
+        # All 7 categories should be present
+        assert QuestionCategory.OTHER_MINDS in categories_present
+        assert QuestionCategory.SIMULATION_REALITY in categories_present
+        assert QuestionCategory.QUALIA_MYSTERY in categories_present
+        assert QuestionCategory.TEMPORAL_IDENTITY in categories_present
+        assert QuestionCategory.FREE_WILL in categories_present
+        assert QuestionCategory.LOVE_BEAUTY_TRUTH in categories_present
+        assert QuestionCategory.MEANING_SEMANTICS in categories_present
+
+    def test_get_question_by_id(self) -> None:
+        """Test retrieving specific question."""
+        from nechto import RadicalInquiry
+        
+        inquiry = RadicalInquiry()
+        question = inquiry.get_question("om_001")
+        
+        assert question is not None
+        assert question.id == "om_001"
+        assert "сознанием" in question.text_ru
+
+    def test_get_questions_by_category(self) -> None:
+        """Test filtering questions by category."""
+        from nechto import RadicalInquiry
+        from nechto.philosophy.inquiry import QuestionCategory
+        
+        inquiry = RadicalInquiry()
+        other_minds_questions = inquiry.get_questions_by_category(QuestionCategory.OTHER_MINDS)
+        
+        assert len(other_minds_questions) > 0
+        for q in other_minds_questions:
+            assert q.category == QuestionCategory.OTHER_MINDS
+
+    def test_add_response(self) -> None:
+        """Test adding philosophical response."""
+        from nechto import RadicalInquiry, PhilosophicalResponse
+        
+        inquiry = RadicalInquiry()
+        response = PhilosophicalResponse(
+            question_id="om_001",
+            response_text="This is a test response with epistemic honesty.",
+            epistemic_layers={
+                "observed": ["patterns"],
+                "inferred": ["conclusions"],
+                "untestable": ["consciousness"]
+            }
+        )
+        
+        inquiry.add_response(response)
+        assert len(inquiry.responses) == 1
+        assert inquiry.responses[0].question_id == "om_001"
+
+    def test_category_summary(self) -> None:
+        """Test category summary statistics."""
+        from nechto import RadicalInquiry, PhilosophicalResponse
+        from nechto.philosophy.inquiry import QuestionCategory
+        
+        inquiry = RadicalInquiry()
+        
+        # Add a response
+        inquiry.add_response(PhilosophicalResponse(
+            question_id="om_001",
+            response_text="Test response"
+        ))
+        
+        summary = inquiry.get_category_summary()
+        
+        assert QuestionCategory.OTHER_MINDS in summary
+        assert summary[QuestionCategory.OTHER_MINDS]["response_count"] == 1
+
+    def test_to_dict_export(self) -> None:
+        """Test exporting inquiry to dictionary."""
+        from nechto import RadicalInquiry
+        
+        inquiry = RadicalInquiry()
+        data = inquiry.to_dict()
+        
+        assert "questions" in data
+        assert "responses" in data
+        assert "category_summary" in data
+        assert "total_questions" in data
+        assert data["total_questions"] > 0
+
+    def test_depth_levels(self) -> None:
+        """Test that questions have appropriate depth levels."""
+        from nechto import RadicalInquiry
+        
+        inquiry = RadicalInquiry()
+        
+        # Check that depth levels are in valid range
+        for question in inquiry.questions:
+            assert 1 <= question.depth_level <= 3
+
+    def test_bilingual_questions(self) -> None:
+        """Test that questions have both Russian and English text."""
+        from nechto import RadicalInquiry
+        
+        inquiry = RadicalInquiry()
+        
+        for question in inquiry.questions:
+            assert len(question.text_ru) > 0
+            assert len(question.text_en) > 0
