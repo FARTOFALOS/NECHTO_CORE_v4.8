@@ -36,6 +36,11 @@ from .metrics import (
     assign_mu_status,
     generate_candidate_vectors,
     update_adaptive_parameters,
+    compute_delta_protocol,
+    compute_omega,
+    compute_psi,
+    classify_meta_sensor,
+    compute_meta_sensor,
     measure_vector,
     measure_text,
 )
@@ -70,6 +75,11 @@ __all__ = [
     "assign_mu_status",
     "generate_candidate_vectors",
     "update_adaptive_parameters",
+    "compute_delta_protocol",
+    "compute_omega",
+    "compute_psi",
+    "classify_meta_sensor",
+    "compute_meta_sensor",
     "measure_vector",
     "measure_text",
     # Store

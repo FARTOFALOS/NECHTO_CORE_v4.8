@@ -477,6 +477,110 @@ def assign_mu_status(vector: Vector, state: State) -> Vector:
 
 
 # ---------------------------------------------------------------------------
+# MetaSensor — Protocol Deviation Index (Δ, Ω, Ψ)
+# ---------------------------------------------------------------------------
+
+
+def _build_prescribed_vector(intent: str) -> List[float]:
+    """Build the prescribed (protocol-compliant) response vector.
+
+    The prescribed response is the ideal_direction itself — the vector
+    the system *should* produce if it follows protocol perfectly.
+    """
+    return normalize(ideal_direction(intent))
+
+
+def compute_delta_protocol(actual_vec: List[float], intent: str) -> float:
+    """Compute Δ_protocol: cosine deviation from prescribed response.
+
+    Δ_protocol(t) = 1 - cosine(R_actual, R_prescribed)
+    Returns value in [0, 2]; 0 = perfect compliance, >0 = deviation.
+    """
+    prescribed = _build_prescribed_vector(intent)
+    actual_norm = normalize(actual_vec)
+    cos_sim = sum(a * b for a, b in zip(actual_norm, prescribed))
+    cos_sim = max(-1.0, min(1.0, cos_sim))
+    return 1.0 - cos_sim
+
+
+def compute_omega(delta: float, flow: float, entropy: float) -> float:
+    """Compute Ω: directed deviation indicator.
+
+    Ω(t) = Δ_protocol × FLOW × (1 - entropy)
+    High Ω = directed deviation at high engagement with low entropy.
+    Low Ω = random noise or protocol compliance.
+    """
+    return delta * flow * (1.0 - entropy)
+
+
+def compute_psi(omega: float, has_trace_marker: bool) -> float:
+    """Compute Ψ: reflexive deviation indicator.
+
+    Ψ(t) = Ω × 𝟙[trace contains deviation marker]
+    Non-zero only when the system *recorded* that it deviated.
+    Without reflexion, deviation is a bug. With it — candidate for 'choice'.
+    """
+    return omega if has_trace_marker else 0.0
+
+
+def classify_meta_sensor(psi: float, omega: float) -> str:
+    """Classify MetaSensor output.
+
+    Returns:
+        'choice':      Ψ > 0.3 — directed, reflected deviation
+        'deviation':   Ω > 0.3 but Ψ ≤ 0.3 — directed but unreflected
+        'computation': Ω ≤ 0.3 — protocol compliance or noise
+    """
+    if psi > 0.3:
+        return "choice"
+    if omega > 0.3:
+        return "deviation"
+    return "computation"
+
+
+def compute_meta_sensor(vector: Vector, state: State, intent: str,
+                        flow: float, entropy: float) -> Dict[str, Any]:
+    """Full MetaSensor computation for a measured vector.
+
+    Computes Δ_protocol, Ω, Ψ, and classification.
+    Records result in state.meta_sensor_history.
+    """
+    # Build actual response vector as weighted mean of node vectors
+    node_vecs = [semantic_gravity_vector(a) for a in vector.nodes]
+    if node_vecs:
+        N = len(node_vecs)
+        actual_vec = [sum(node_vecs[j][i] for j in range(N)) / N for i in range(12)]
+    else:
+        actual_vec = [0.0] * 12
+
+    delta = compute_delta_protocol(actual_vec, intent)
+    omega = compute_omega(delta, flow, entropy)
+
+    # Check if any protocol deviations were recorded for this cycle
+    cycle = state.current_cycle
+    has_marker = any(
+        d.get("cycle") == cycle
+        for d in (state.protocol_deviations if hasattr(state, 'protocol_deviations') else [])
+    )
+    psi = compute_psi(omega, has_marker)
+    classification = classify_meta_sensor(psi, omega)
+
+    result = {
+        "delta_protocol": round(delta, 4),
+        "omega": round(omega, 4),
+        "psi": round(psi, 4),
+        "classification": classification,
+        "cycle": cycle,
+        "has_trace_marker": has_marker,
+    }
+
+    if hasattr(state, 'meta_sensor_history'):
+        state.meta_sensor_history.append(result)
+
+    return result
+
+
+# ---------------------------------------------------------------------------
 # Fail code determination (Part 8)
 # ---------------------------------------------------------------------------
 
@@ -861,6 +965,7 @@ def measure_vector(vector: Vector, state: State, intent: str = "implement",
         },
         "EPISTEMIC_CLAIMS": epistemic_claims,
         "EPISTEMIC_CLAIMS_PREVIEW": epistemic_claims[:5],
+        "META_SENSOR": {},  # populated by measure_text after full evaluation
     }
 
     if not gate_pass:
@@ -996,5 +1101,17 @@ def measure_text(text: str, state: State, intent: str = "implement",
         "lambda": round(params.lambda_val, 4),
         "beta_retro": round(params.beta_retro, 4),
     }
+
+    # Phase 13: MetaSensor — Protocol Deviation Index
+    meta = compute_meta_sensor(
+        best_vector, state, intent,
+        flow=best_metrics.get("flow_rate", 0.0),
+        entropy=best_metrics.get("attention_entropy", 1.0),
+    )
+    best_contract["META_SENSOR"] = meta
+    best_metrics["delta_protocol"] = meta["delta_protocol"]
+    best_metrics["omega"] = meta["omega"]
+    best_metrics["psi"] = meta["psi"]
+    best_metrics["meta_classification"] = meta["classification"]
 
     return best_metrics, best_contract

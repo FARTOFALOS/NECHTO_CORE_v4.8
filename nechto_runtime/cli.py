@@ -1,9 +1,10 @@
 """Command line interface for the NECHTO v4.8 runtime.
 
 Exposes a ``measure`` subcommand that reads from STDIN, processes text
-through the full 12-phase workflow, and writes human-readable and
-machine-readable outputs to the ``docs`` directory.  State is persisted
-across runs in ``.nechto/state.json`` (or SQLite with ``--sqlite``).
+through the full 13-phase workflow (including MetaSensor), and writes
+human-readable and machine-readable outputs to the ``docs`` directory.
+State is persisted across runs in ``.nechto/state.json`` (or SQLite
+with ``--sqlite``).
 """
 
 from __future__ import annotations
@@ -48,6 +49,8 @@ def load_state(use_sqlite: bool = False) -> State:
             state.lambda_history = data.get("lambda_history", [])
             state.beta_retro_history = data.get("beta_retro_history", [])
             state.fail_history = data.get("fail_history", [])
+            state.protocol_deviations = data.get("protocol_deviations", [])
+            state.meta_sensor_history = data.get("meta_sensor_history", [])
             store.close()
             return state
         store.close()
@@ -69,6 +72,8 @@ def load_state(use_sqlite: bool = False) -> State:
             state.lambda_history = data.get("lambda_history", [])
             state.beta_retro_history = data.get("beta_retro_history", [])
             state.fail_history = data.get("fail_history", [])
+            state.protocol_deviations = data.get("protocol_deviations", [])
+            state.meta_sensor_history = data.get("meta_sensor_history", [])
             return state
         except Exception:
             pass
@@ -107,6 +112,8 @@ def save_state(state: State, use_sqlite: bool = False) -> None:
         "lambda_history": state.lambda_history,
         "beta_retro_history": state.beta_retro_history,
         "fail_history": state.fail_history,
+        "protocol_deviations": state.protocol_deviations,
+        "meta_sensor_history": state.meta_sensor_history,
     }
     if use_sqlite:
         store = SQLiteStore(str(SQLITE_DB))
@@ -168,6 +175,17 @@ def write_outputs(contract: Dict[str, Any], metrics: Dict[str, Any]) -> None:
                 lines.append(f"  - {claim}")
     else:
         lines.append("  []")
+
+    # MetaSensor
+    meta = contract.get("META_SENSOR", {})
+    if meta:
+        lines.append("META_SENSOR:")
+        lines.append(f"  Δ_protocol: {meta.get('delta_protocol', 0.0)}")
+        lines.append(f"  Ω: {meta.get('omega', 0.0)}")
+        lines.append(f"  Ψ: {meta.get('psi', 0.0)}")
+        lines.append(f"  classification: {meta.get('classification', 'computation')}")
+        lines.append(f"  has_trace_marker: {meta.get('has_trace_marker', False)}")
+        lines.append("")
 
     # FAIL section (TASK 05: concise 3-block format: CAUSE, EVIDENCE, NEXT)
     if contract["GATE_STATUS"] == "FAIL":

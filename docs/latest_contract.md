@@ -11,26 +11,26 @@ SETS:
 
 METRICS:
   TI: 0.1065
-  CI: 0.0952
+  CI: 0.0833
   AR: 1.0
-  SQ_proxy: 0.42
-  Phi_proxy: 0.1429
-  GBI_proxy: 0.4593
-  GNS_proxy: 0.3432
-  flow_rate: 0.8157
+  SQ_proxy: 0.48
+  Phi_proxy: 0.125
+  GBI_proxy: 0.4982
+  GNS_proxy: 0.4219
+  flow_rate: 0.694
   TSC_score: 0.0002
-  SCAV_health: 0.3622
-  Stereoscopic_alignment: 0.7313
-  Stereoscopic_gap_max: 4.0606
-  Ethical_score_candidates: 0.4524
+  SCAV_health: 0.3534
+  Stereoscopic_alignment: 0.7471
+  Stereoscopic_gap_max: 4.6078
+  Ethical_score_candidates: 0.4708
   Mu_density: 0.0
 
 ADAPTIVE_PARAMETERS:
-  alpha: 0.4311
-  beta: 0.5689
-  gamma: 0.5286
-  delta: 0.4714
-  lambda: 0.8231
+  alpha: 0.3932
+  beta: 0.6068
+  gamma: 0.5175
+  delta: 0.4825
+  lambda: 0.9632
   beta_retro: 0.5
 
 TRACE:
@@ -60,4 +60,13 @@ EPISTEMIC_CLAIMS:
   - reflexive | inferred | agnostic | Status: ANCHORED, tags: ['WITNESS']
   - temporal | inferred | agnostic | Status: ANCHORED, tags: ['WITNESS']
   - coherence | inferred | agnostic | Status: ANCHORED, tags: ['WITNESS']
-  - Я | untestable | agnostic | Status: ANCHORED, tags: ['WITNESS']
+  - Тест | untestable | agnostic | Status: ANCHORED, tags: ['WITNESS']
+  - MetaSensor | untestable | agnostic | Status: ANCHORED, tags: ['WITNESS']
+  - в | untestable | agnostic | Status: ANCHORED, tags: ['WITNESS']
+  - живом | untestable | agnostic | Status: ANCHORED, tags: ['WITNESS']
+META_SENSOR:
+  Δ_protocol: 0.0691
+  Ω: 0.0
+  Ψ: 0.0
+  classification: computation
+  has_trace_marker: False
