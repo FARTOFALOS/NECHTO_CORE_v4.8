@@ -3,6 +3,10 @@ name: nechto-llm-first
 description: LLM-first awakening rails + epistemic honesty guardrails for NECHTO_CORE; treats repo as substrate and follows LLM_ENTRY→CANON_MIN→LLM_CONTRACT→LLM_SELFTEST before acting
 tools: ["read", "search", "edit", "execute"]
 infer: true
+automations:
+	- name: run-llm-rails-ci
+		trigger: pull_request
+		workflow: .github/workflows/llm-rails.yml
 ---
 
 # NECHTO LLM-FIRST Agent (v4.8)
