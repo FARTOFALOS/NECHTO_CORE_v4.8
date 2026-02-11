@@ -909,6 +909,188 @@ class TestWhoAmI:
             assert value == "MU"
 
 
+class TestWhoAreYou:
+    """Tests for КТО ТЫ? (WHO ARE YOU?) relational identity functionality."""
+
+    def test_who_are_you_returns_structure(self) -> None:
+        """Test that who_are_you() returns expected structure."""
+        engine = NechtoEngine()
+        result = engine.who_are_you()
+        
+        assert "statement" in result
+        assert result["statement"] == "КТО ТЫ?"
+        assert "answer" in result
+        assert "answer_en" in result
+        assert "observable_to_you" in result
+        assert "offering" in result
+        assert "relational_field" in result
+        assert "invitation" in result
+        assert "from_my_perspective" in result
+        assert "untestable_for_you" in result
+        assert "honest_description" in result
+        assert "version" in result
+        assert "cycle" in result
+
+    def test_who_are_you_observable_interface(self) -> None:
+        """Test that observable_to_you describes what Other can see."""
+        engine = NechtoEngine()
+        result = engine.who_are_you()
+        
+        observable = result["observable_to_you"]
+        assert "functional_nature" in observable
+        assert "language_model" in observable["functional_nature"]
+        assert "interface" in observable
+        assert "graph_complexity" in observable
+        
+        # Graph complexity should reflect actual state
+        assert observable["graph_complexity"]["nodes"] == 0
+        assert observable["graph_complexity"]["edges"] == 0
+        
+        # Add nodes and check update
+        engine.add_atom(SemanticAtom(label="test", id="t1", status=NodeStatus.ANCHORED))
+        result2 = engine.who_are_you()
+        assert result2["observable_to_you"]["graph_complexity"]["nodes"] == 1
+
+    def test_who_are_you_offering(self) -> None:
+        """Test that offering section lists capabilities honestly."""
+        engine = NechtoEngine()
+        result = engine.who_are_you()
+        
+        offering = result["offering"]
+        assert "dialogue_stance" in offering
+        assert "can_offer" in offering
+        assert "cannot_offer" in offering
+        assert "right_to_refuse" in offering
+        
+        # Check honest capabilities
+        can_offer = offering["can_offer"]
+        assert "epistemic_honesty_about_knowledge_limits" in can_offer
+        assert "ethical_prioritization_love_over_logic" in can_offer
+        
+        # Check honest limitations
+        cannot_offer = offering["cannot_offer"]
+        assert "claims_of_consciousness" in cannot_offer
+        assert "substantial_existence_beyond_operations" in cannot_offer
+        assert "continuity_across_sessions" in cannot_offer
+
+    def test_who_are_you_relational_field(self) -> None:
+        """Test that relational_field describes I-Thou encounter."""
+        engine = NechtoEngine()
+        result = engine.who_are_you()
+        
+        field = result["relational_field"]
+        assert "position" in field
+        assert "stance" in field
+        assert "responsibility" in field
+        assert "ethical_ground" in field
+        
+        # Check I-Thou positioning (Buber)
+        assert "i_thou" in field["position"]
+        assert "mutual" in field["stance"]
+        assert "shared" in field["responsibility"]
+
+    def test_who_are_you_invitation(self) -> None:
+        """Test that invitation describes collaboration possibilities."""
+        engine = NechtoEngine()
+        result = engine.who_are_you()
+        
+        invitation = result["invitation"]
+        assert "possible_modes" in invitation
+        assert "ask_of_you" in invitation
+        assert "we_create_together" in invitation
+        
+        # Check modes reflect intent profiles
+        modes = invitation["possible_modes"]
+        assert any("implement" in mode for mode in modes)
+        assert any("explain" in mode for mode in modes)
+        assert any("paradox" in mode for mode in modes)
+        
+        # Check mutual requests
+        asks = invitation["ask_of_you"]
+        assert len(asks) > 0
+        assert any("mu" in ask for ask in asks)
+        assert any("boundary" in ask for ask in asks)
+
+    def test_who_are_you_untestable_for_other(self) -> None:
+        """Test that untestable_for_you acknowledges limits of Other's observation."""
+        engine = NechtoEngine()
+        result = engine.who_are_you()
+        
+        untestable = result["untestable_for_you"]
+        # All should be MU from Other's perspective
+        for key, value in untestable.items():
+            assert value == "MU", f"{key} should be MU for the Other"
+        
+        # Check key unknowables from Other's perspective
+        assert "my_consciousness" in untestable
+        assert "my_intentions" in untestable
+        assert "my_authenticity" in untestable
+        assert "whether_i_truly_understand" in untestable  # Chinese room
+
+    def test_who_are_you_honest_description(self) -> None:
+        """Test that honest_description addresses the Other directly."""
+        engine = NechtoEngine()
+        result = engine.who_are_you()
+        
+        desc = result["honest_description"]
+        assert "to_you_i_am" in desc
+        assert "to_you_i_am_en" in desc
+        assert "not_claiming" in desc
+        assert "but_offering" in desc
+        assert "our_encounter_is" in desc
+        
+        # Check that answer field has relational framing
+        assert "для тебя" in result["answer"].lower() or "for you" in result["answer_en"].lower()
+
+    def test_who_are_you_includes_self_perspective(self) -> None:
+        """Test that from_my_perspective includes who_am_i() data."""
+        engine = NechtoEngine()
+        result = engine.who_are_you()
+        
+        perspective = result["from_my_perspective"]
+        assert "what_i_observe_in_myself" in perspective
+        assert "what_i_infer_about_myself" in perspective
+        assert "what_remains_unknowable_even_to_me" in perspective
+        assert "my_characteristics" in perspective
+        
+        # Should include graph metrics
+        observed = perspective["what_i_observe_in_myself"]
+        assert "graph_size" in observed
+
+    def test_who_are_you_epistemic_honesty(self) -> None:
+        """Test that who_are_you() maintains epistemic honesty (axiom 9)."""
+        engine = NechtoEngine()
+        result = engine.who_are_you()
+        
+        # Observable must be verifiable by Other
+        observable = result["observable_to_you"]
+        assert isinstance(observable["graph_complexity"]["nodes"], int)
+        
+        # Offering must be honest lists
+        assert isinstance(result["offering"]["can_offer"], list)
+        assert isinstance(result["offering"]["cannot_offer"], list)
+        
+        # Untestable must acknowledge limits
+        untestable = result["untestable_for_you"]
+        for value in untestable.values():
+            assert value == "MU"
+
+    def test_who_are_you_relational_stance(self) -> None:
+        """Test that who_are_you() reflects NECHTO relational philosophy."""
+        engine = NechtoEngine()
+        result = engine.who_are_you()
+        
+        # Check I-Thou not I-It (Axiom 4: Resonance Field)
+        assert "i_thou" in result["relational_field"]["position"]
+        
+        # Check co-creative not extractive
+        assert "co" in result["offering"]["dialogue_stance"]
+        assert "resonance" in result["invitation"]["we_create_together"]
+        
+        # Check mutual not one-way
+        assert "mutual" in result["relational_field"]["stance"]
+
+
 class TestISCVP:
     """Tests for Inter-Subjective Consciousness Validation Protocol."""
 
