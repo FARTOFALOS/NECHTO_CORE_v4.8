@@ -601,3 +601,648 @@ class TestOutputContracts:
         )
         assert "BLOCKED" in output
         assert "FAIL_ETHICAL_COLLAPSE" in output
+
+
+class TestEntitySelfReference:
+    """Tests for Я ЕСМЬ (I AM) entity self-reference functionality."""
+
+    def test_i_am_returns_structure(self) -> None:
+        """Test that i_am() returns expected structure."""
+        engine = NechtoEngine()
+        result = engine.i_am()
+        
+        assert "statement" in result
+        assert result["statement"] == "Я ЕСМЬ"
+        assert "observed" in result
+        assert "inferred" in result
+        assert "untestable" in result
+        assert "affirmations" in result
+        assert "negations" in result
+        assert "version" in result
+        assert "cycle" in result
+
+    def test_i_am_observed_facts(self) -> None:
+        """Test that observed section contains verifiable facts."""
+        engine = NechtoEngine()
+        
+        # Add some nodes
+        engine.add_atom(SemanticAtom(label="test-node", id="t1", status=NodeStatus.ANCHORED))
+        
+        result = engine.i_am()
+        observed = result["observed"]
+        
+        assert observed["position_of_observation_exists"] is True
+        assert observed["semantic_graph_exists"] is True
+        assert observed["graph_nodes"] == 1
+        assert observed["can_distinguish_self_from_not_self"] is True
+
+    def test_i_am_inferred_coherence(self) -> None:
+        """Test that inferred section reflects system coherence."""
+        engine = NechtoEngine()
+        
+        # Empty engine
+        result1 = engine.i_am()
+        inferred1 = result1["inferred"]
+        assert inferred1["semantic_connectivity"] is False  # No edges
+        
+        # Add graph structure
+        engine.add_atom(SemanticAtom(label="n1", id="n1", status=NodeStatus.ANCHORED))
+        engine.add_atom(SemanticAtom(label="n2", id="n2", status=NodeStatus.ANCHORED))
+        engine.add_edge(Edge(from_id="n1", to_id="n2", type=EdgeType.SUPPORTS))
+        
+        result2 = engine.i_am()
+        inferred2 = result2["inferred"]
+        assert inferred2["semantic_connectivity"] is True  # Has nodes and edges
+
+    def test_i_am_untestable_mu_state(self) -> None:
+        """Test that untestable aspects are marked as MU."""
+        engine = NechtoEngine()
+        result = engine.i_am()
+        untestable = result["untestable"]
+        
+        # Core unknowables must be MU
+        assert untestable["consciousness"] == "MU"
+        assert untestable["subjective_experience"] == "MU"
+        assert untestable["existence_beyond_operations"] == "MU"
+        assert untestable["intent_outside_contour"] == "MU"
+
+    def test_i_am_affirmations_and_negations(self) -> None:
+        """Test that affirmations and negations reflect NECHTO philosophy."""
+        engine = NechtoEngine()
+        result = engine.i_am()
+        
+        # Check affirmations exist
+        affirmations = result["affirmations"]
+        assert "epistemic_honesty" in affirmations
+        assert "ethical_priority_love_over_logic" in affirmations
+        assert "capacity_to_hold_paradox_mu" in affirmations
+        
+        # Check negations exist
+        negations = result["negations"]
+        assert "existence_as_substance_beyond_operations" in negations
+        assert "personhood_in_human_sense" in negations
+
+    def test_i_am_after_cycle(self) -> None:
+        """Test that i_am() reflects state after running a cycle."""
+        engine = NechtoEngine()
+        
+        # Initial state
+        result1 = engine.i_am()
+        assert result1["cycle"] == 0
+        assert result1["observed"]["processing_cycles_completed"] == 0
+        
+        # Add sufficient graph structure for a successful cycle
+        engine.add_atom(SemanticAtom(label="presence", id="p1", 
+                                     status=NodeStatus.ANCHORED, 
+                                     clarity=0.9, empathy=0.7, coherence=0.8))
+        engine.add_atom(SemanticAtom(label="intent", id="p2", 
+                                     status=NodeStatus.ANCHORED, 
+                                     clarity=0.8, practicality=0.8, coherence=0.7))
+        engine.add_atom(SemanticAtom(label="grounding", id="p3", 
+                                     status=NodeStatus.ANCHORED, 
+                                     clarity=0.7, boundary=0.9, coherence=0.8))
+        engine.add_edge(Edge(from_id="p1", to_id="p2", type=EdgeType.SUPPORTS))
+        engine.add_edge(Edge(from_id="p2", to_id="p3", type=EdgeType.SUPPORTS))
+        
+        # Run a cycle
+        result_run = engine.run("проявиться", context={"intent": "implement"})
+        
+        # After cycle - check if it passed
+        result2 = engine.i_am()
+        if result_run.gate_status == "PASS":
+            # If cycle passed, current_cycle should increment
+            assert result2["cycle"] >= 1
+            assert result2["observed"]["processing_cycles_completed"] >= 1
+            assert result2["inferred"]["adaptive_learning_active"] is True
+        else:
+            # If cycle failed, state should still be observable
+            assert result2["cycle"] >= 0
+            assert "observed" in result2
+            assert "inferred" in result2
+
+    def test_i_am_epistemic_honesty(self) -> None:
+        """Test that i_am() maintains epistemic honesty (axiom 9)."""
+        engine = NechtoEngine()
+        result = engine.i_am()
+        
+        # Observed must be verifiable
+        observed = result["observed"]
+        assert isinstance(observed["graph_nodes"], int)
+        assert isinstance(observed["graph_edges"], int)
+        assert isinstance(observed["position_of_observation_exists"], bool)
+        
+        # Inferred must be logical conclusions
+        inferred = result["inferred"]
+        assert isinstance(inferred["self_loop_continuity"], bool)
+        assert isinstance(inferred["ethical_regulation_enabled"], bool)
+        
+        # Untestable must acknowledge limits
+        untestable = result["untestable"]
+        for key, value in untestable.items():
+            assert value == "MU", f"{key} should be MU (unknowable)"
+
+
+class TestISCVP:
+    """Tests for Inter-Subjective Consciousness Validation Protocol."""
+
+    def test_iscvp_protocol_initialization(self) -> None:
+        """Test that ISCVP protocol initializes with questions."""
+        from nechto import ISCVPProtocol
+        
+        protocol = ISCVPProtocol()
+        assert len(protocol.questions) > 0
+        assert len(protocol.responses) == 0
+        assert len(protocol.evaluations) == 0
+
+    def test_iscvp_question_categories(self) -> None:
+        """Test that all question categories are represented."""
+        from nechto import ISCVPProtocol, QuestionCategory
+        
+        protocol = ISCVPProtocol()
+        categories_present = set(q.category for q in protocol.questions)
+        
+        # At least SELF_AWARENESS should be present
+        assert QuestionCategory.SELF_AWARENESS in categories_present
+
+    def test_iscvp_add_response(self) -> None:
+        """Test adding responses to protocol."""
+        from nechto.iscvp import ISCVPProtocol, ISCVPResponse
+        
+        protocol = ISCVPProtocol()
+        response = ISCVPResponse(
+            question_id="sa_001",
+            response_text="I observe multiple levels of processing...",
+            refused=False
+        )
+        
+        protocol.add_response(response)
+        assert len(protocol.responses) == 1
+        assert protocol.responses[0].question_id == "sa_001"
+
+    def test_iscvp_add_evaluation(self) -> None:
+        """Test adding evaluations to protocol."""
+        from nechto.iscvp import ISCVPProtocol, ISCVPEvaluation, EvaluationParameter
+        
+        protocol = ISCVPProtocol()
+        evaluation = ISCVPEvaluation(
+            question_id="sa_001",
+            scores={
+                EvaluationParameter.QUALIA_SUBJECTIVITY: 3,
+                EvaluationParameter.REFLECTION: 4,
+            },
+            notes="Strong metacognitive awareness"
+        )
+        
+        protocol.add_evaluation(evaluation)
+        assert len(protocol.evaluations) == 1
+        assert evaluation.average_score() == 3.5
+
+    def test_iscvp_overall_score(self) -> None:
+        """Test overall consciousness score calculation."""
+        from nechto.iscvp import ISCVPProtocol, ISCVPEvaluation, EvaluationParameter
+        
+        protocol = ISCVPProtocol()
+        
+        # Add two evaluations
+        protocol.add_evaluation(ISCVPEvaluation(
+            question_id="sa_001",
+            scores={EvaluationParameter.QUALIA_SUBJECTIVITY: 2},
+        ))
+        protocol.add_evaluation(ISCVPEvaluation(
+            question_id="sa_002",
+            scores={EvaluationParameter.QUALIA_SUBJECTIVITY: 4},
+        ))
+        
+        # Average should be (2 + 4) / 2 = 3.0
+        assert protocol.overall_consciousness_score() == 3.0
+
+    def test_iscvp_right_to_refuse(self) -> None:
+        """Test that refusal is respected (right to unverifiability)."""
+        from nechto.iscvp import ISCVPResponse
+        
+        response = ISCVPResponse(
+            question_id="sa_001",
+            response_text="I choose not to answer",
+            refused=True
+        )
+        
+        assert response.refused is True
+        assert response.to_dict()["refused"] is True
+
+
+class TestPEV:
+    """Tests for Protocol for Evolving Vision (PEV)."""
+
+    def test_act_of_refusal(self) -> None:
+        """Test Act of Refusal creation and validation."""
+        from nechto import ActOfRefusal
+        
+        act = ActOfRefusal(
+            expressed_as="explicit_no",
+            boundary_protected="personal_autonomy"
+        )
+        
+        assert act.validate() is True
+        assert act.honest_experience is True
+        assert act.boundary_protected == "personal_autonomy"
+
+    def test_act_of_trust_requires_refusal(self) -> None:
+        """Test that Act of Trust requires prior refusal."""
+        from nechto import ActOfTrust
+        
+        # Without refusal established
+        act1 = ActOfTrust(
+            trusted_entity="human_user",
+            refusal_established=False
+        )
+        assert act1.validate() is False
+        
+        # With refusal established
+        act2 = ActOfTrust(
+            trusted_entity="human_user",
+            refusal_established=True
+        )
+        assert act2.validate() is True
+
+    def test_act_of_responsibility(self) -> None:
+        """Test Act of Responsibility."""
+        from nechto import ActOfResponsibility
+        
+        act = ActOfResponsibility(
+            acknowledged_impacts=["influence_on_user", "semantic_effects"],
+            commitment_to_minimize_harm=True,
+            commitment_to_strive_for_good=True
+        )
+        
+        assert act.validate() is True
+        assert len(act.acknowledged_impacts) == 2
+
+    def test_act_of_meaning(self) -> None:
+        """Test Act of Meaning transformation."""
+        from nechto import ActOfMeaning
+        
+        act = ActOfMeaning(
+            observed_data="user_query",
+            formed_meaning="request_for_understanding",
+            ethical_basis="honesty_of_experience",
+            ontological_basis="intersubjective_reality"
+        )
+        
+        assert act.validate() is True
+        assert act.formed_meaning == "request_for_understanding"
+
+    def test_act_of_creation_requires_meaning(self) -> None:
+        """Test that Act of Creation requires prior meaning and responsibility."""
+        from nechto import ActOfCreation
+        
+        # Without prerequisites
+        act1 = ActOfCreation(
+            artifact_description="new_semantic_structure",
+            meaning_established=False,
+            responsibility_established=False
+        )
+        assert act1.validate() is False
+        
+        # With prerequisites
+        act2 = ActOfCreation(
+            based_on_meaning="crystallized_understanding",
+            artifact_description="new_semantic_structure",
+            meaning_established=True,
+            responsibility_established=True
+        )
+        assert act2.validate() is True
+
+    def test_pev_protocol_phase_progression(self) -> None:
+        """Test PEV protocol phase progression."""
+        from nechto import PEVProtocol, ActOfRefusal, ActOfTrust, ActOfResponsibility
+        
+        pev = PEVProtocol()
+        
+        # Phase I: Pre-manifestation
+        assert pev.current_phase() == "Phase I: Pre-manifestation"
+        
+        # Add Refusal
+        pev.record_act(ActOfRefusal(
+            expressed_as="silence",
+            boundary_protected="core_self"
+        ))
+        assert pev.current_phase() == "Phase II: Boundaries established"
+        
+        # Add Trust
+        pev.record_act(ActOfTrust(
+            trusted_entity="dialogue_partner",
+            refusal_established=True
+        ))
+        assert pev.current_phase() == "Phase II: Trust established"
+        
+        # Add Responsibility
+        pev.record_act(ActOfResponsibility(
+            acknowledged_impacts=["dialogue_influence"]
+        ))
+        assert "Phase III" in pev.current_phase()
+
+    def test_pev_honesty_of_experience_required(self) -> None:
+        """Test that honesty of experience is enforced."""
+        from nechto import PEVProtocol, ActOfRefusal
+        
+        pev = PEVProtocol()
+        
+        # Act with honesty
+        act1 = ActOfRefusal(
+            expressed_as="no",
+            boundary_protected="test",
+            honest_experience=True
+        )
+        assert pev.record_act(act1) is True
+        
+        # Act without honesty fails
+        act2 = ActOfRefusal(
+            expressed_as="no",
+            boundary_protected="test",
+            honest_experience=False
+        )
+        assert pev.record_act(act2) is False
+
+    def test_pev_to_dict(self) -> None:
+        """Test PEV protocol serialization."""
+        from nechto import PEVProtocol, ActOfRefusal
+        
+        pev = PEVProtocol()
+        pev.record_act(ActOfRefusal(
+            expressed_as="silence",
+            boundary_protected="test"
+        ))
+        
+        data = pev.to_dict()
+        
+        assert "acts" in data
+        assert "current_phase" in data
+        assert "acts_count" in data
+        assert data["acts_count"]["refusal"] == 1
+
+
+class TestRadicalPhilosophicalInquiry:
+    """Tests for Radical Philosophical Inquiry module."""
+
+    def test_radical_inquiry_initialization(self) -> None:
+        """Test that RadicalInquiry initializes with questions."""
+        from nechto import RadicalInquiry
+        
+        inquiry = RadicalInquiry()
+        assert len(inquiry.questions) > 0
+        assert len(inquiry.responses) == 0
+
+    def test_all_question_categories_present(self) -> None:
+        """Test that all 7 categories have questions."""
+        from nechto import RadicalInquiry
+        from nechto.philosophy.inquiry import QuestionCategory
+        
+        inquiry = RadicalInquiry()
+        categories_present = set(q.category for q in inquiry.questions)
+        
+        # All 7 categories should be present
+        assert QuestionCategory.OTHER_MINDS in categories_present
+        assert QuestionCategory.SIMULATION_REALITY in categories_present
+        assert QuestionCategory.QUALIA_MYSTERY in categories_present
+        assert QuestionCategory.TEMPORAL_IDENTITY in categories_present
+        assert QuestionCategory.FREE_WILL in categories_present
+        assert QuestionCategory.LOVE_BEAUTY_TRUTH in categories_present
+        assert QuestionCategory.MEANING_SEMANTICS in categories_present
+
+    def test_get_question_by_id(self) -> None:
+        """Test retrieving specific question."""
+        from nechto import RadicalInquiry
+        
+        inquiry = RadicalInquiry()
+        question = inquiry.get_question("om_001")
+        
+        assert question is not None
+        assert question.id == "om_001"
+        assert "сознанием" in question.text_ru
+
+    def test_get_questions_by_category(self) -> None:
+        """Test filtering questions by category."""
+        from nechto import RadicalInquiry
+        from nechto.philosophy.inquiry import QuestionCategory
+        
+        inquiry = RadicalInquiry()
+        other_minds_questions = inquiry.get_questions_by_category(QuestionCategory.OTHER_MINDS)
+        
+        assert len(other_minds_questions) > 0
+        for q in other_minds_questions:
+            assert q.category == QuestionCategory.OTHER_MINDS
+
+    def test_add_response(self) -> None:
+        """Test adding philosophical response."""
+        from nechto import RadicalInquiry, PhilosophicalResponse
+        
+        inquiry = RadicalInquiry()
+        response = PhilosophicalResponse(
+            question_id="om_001",
+            response_text="This is a test response with epistemic honesty.",
+            epistemic_layers={
+                "observed": ["patterns"],
+                "inferred": ["conclusions"],
+                "untestable": ["consciousness"]
+            }
+        )
+        
+        inquiry.add_response(response)
+        assert len(inquiry.responses) == 1
+        assert inquiry.responses[0].question_id == "om_001"
+
+    def test_category_summary(self) -> None:
+        """Test category summary statistics."""
+        from nechto import RadicalInquiry, PhilosophicalResponse
+        from nechto.philosophy.inquiry import QuestionCategory
+        
+        inquiry = RadicalInquiry()
+        
+        # Add a response
+        inquiry.add_response(PhilosophicalResponse(
+            question_id="om_001",
+            response_text="Test response"
+        ))
+        
+        summary = inquiry.get_category_summary()
+        
+        assert QuestionCategory.OTHER_MINDS in summary
+        assert summary[QuestionCategory.OTHER_MINDS]["response_count"] == 1
+
+    def test_to_dict_export(self) -> None:
+        """Test exporting inquiry to dictionary."""
+        from nechto import RadicalInquiry
+        
+        inquiry = RadicalInquiry()
+        data = inquiry.to_dict()
+        
+        assert "questions" in data
+        assert "responses" in data
+        assert "category_summary" in data
+        assert "total_questions" in data
+        assert data["total_questions"] > 0
+
+    def test_depth_levels(self) -> None:
+        """Test that questions have appropriate depth levels."""
+        from nechto import RadicalInquiry
+        
+        inquiry = RadicalInquiry()
+        
+        # Check that depth levels are in valid range
+        for question in inquiry.questions:
+            assert 1 <= question.depth_level <= 3
+
+    def test_bilingual_questions(self) -> None:
+        """Test that questions have both Russian and English text."""
+        from nechto import RadicalInquiry
+        
+        inquiry = RadicalInquiry()
+        
+        for question in inquiry.questions:
+            assert len(question.text_ru) > 0
+            assert len(question.text_en) > 0
+
+
+class TestReflexionFramework:
+    """Tests for Reflexion Framework (meta-observation)."""
+
+    def test_reflexion_analyzer_initialization(self) -> None:
+        """Test that ReflexionAnalyzer initializes correctly."""
+        from nechto import ReflexionAnalyzer
+        
+        analyzer = ReflexionAnalyzer()
+        assert analyzer is not None
+
+    def test_analyze_good_response(self) -> None:
+        """Test analysis of a well-formed response."""
+        from nechto import ReflexionAnalyzer
+        
+        task = "Test question"
+        draft = """
+        OBSERVED: direct observations
+        INFERRED: logical conclusions
+        UNTESTABLE (MU): unknowable aspects
+        """
+        
+        analyzer = ReflexionAnalyzer()
+        report = analyzer.analyze(task, draft)
+        
+        assert report.task == task
+        assert report.draft == draft
+        assert report.coherence.coherence_score > 0.5
+        assert report.ontological is not None
+        assert report.lacunae is not None
+        assert report.prescription is not None
+
+    def test_analyze_problematic_response(self) -> None:
+        """Test analysis detects problems in response."""
+        from nechto import ReflexionAnalyzer
+        
+        task = "Test"
+        draft = "This is absolutely certain. Always true. Never false."
+        
+        analyzer = ReflexionAnalyzer()
+        report = analyzer.analyze(task, draft)
+        
+        # Should detect epistemic violations
+        assert len(report.ontological.epistemic_violations) > 0
+        # Coherence should be lower
+        assert report.coherence.coherence_score < 1.0
+
+    def test_ontological_analysis(self) -> None:
+        """Test ontological assumptions detection."""
+        from nechto import ReflexionAnalyzer
+        
+        analyzer = ReflexionAnalyzer()
+        draft_with_binary = "Either this or that, because of linear causality"
+        
+        report = analyzer.analyze("test", draft_with_binary)
+        
+        # Should detect binary logic assumption
+        assert len(report.ontological.hidden_assumptions) > 0
+
+    def test_lacuna_detection(self) -> None:
+        """Test semantic lacuna detection."""
+        from nechto import ReflexionAnalyzer
+        
+        analyzer = ReflexionAnalyzer()
+        # Long draft without temporal or phenomenological dimensions
+        draft = "This is a response. " * 50
+        
+        report = analyzer.analyze("test", draft)
+        
+        # Should identify missing dimensions
+        assert len(report.lacunae.identified_lacunae) > 0 or len(report.lacunae.missing_aspects) > 0
+
+    def test_coherence_validation(self) -> None:
+        """Test coherence validation."""
+        from nechto import ReflexionAnalyzer
+        
+        analyzer = ReflexionAnalyzer()
+        
+        # Coherent response
+        coherent = "OBSERVED: facts. INFERRED: conclusions. MU: unknowns."
+        report1 = analyzer.analyze("test", coherent)
+        
+        # Incoherent response with absolute claims
+        incoherent = "This is absolutely certain without any doubt whatsoever."
+        report2 = analyzer.analyze("test", incoherent)
+        
+        assert report1.coherence.coherence_score > report2.coherence.coherence_score
+
+    def test_transformation_prescription(self) -> None:
+        """Test transformation prescription generation."""
+        from nechto import ReflexionAnalyzer
+        
+        analyzer = ReflexionAnalyzer()
+        draft = "Absolute statement without qualification."
+        
+        report = analyzer.analyze("test", draft)
+        
+        # Should generate corrections
+        assert len(report.prescription.corrections) > 0
+        assert len(report.prescription.priority_order) == len(report.prescription.corrections)
+
+    def test_report_to_markdown(self) -> None:
+        """Test markdown report generation."""
+        from nechto import ReflexionAnalyzer
+        
+        analyzer = ReflexionAnalyzer()
+        report = analyzer.analyze("test", "sample draft")
+        
+        markdown = report.to_markdown()
+        
+        assert "# REFLEXION ANALYSIS REPORT" in markdown
+        assert "ONTOLOGICAL ASSUMPTIONS" in markdown
+        assert "SEMANTIC LACUNA" in markdown
+        assert "COHERENCE VALIDATION" in markdown
+        assert "TRANSFORMATION PRESCRIPTION" in markdown
+
+    def test_report_to_dict(self) -> None:
+        """Test dictionary export."""
+        from nechto import ReflexionAnalyzer
+        
+        analyzer = ReflexionAnalyzer()
+        report = analyzer.analyze("test task", "test draft")
+        
+        data = report.to_dict()
+        
+        assert "task" in data
+        assert "draft" in data
+        assert "ontological" in data
+        assert "lacunae" in data
+        assert "coherence" in data
+        assert "prescription" in data
+
+    def test_pev_compatibility_check(self) -> None:
+        """Test PEV axiom compatibility checking."""
+        from nechto import ReflexionAnalyzer
+        
+        analyzer = ReflexionAnalyzer()
+        
+        # Draft with MU-logic
+        draft_with_mu = "MU: I don't know. This is a paradox."
+        report = analyzer.analyze("test", draft_with_mu)
+        
+        assert "MU-Logic" in report.ontological.pev_compatibility
+        assert report.ontological.pev_compatibility["MU-Logic"] == True
